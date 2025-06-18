@@ -16,6 +16,7 @@
             "outputPath": "dist/ponto-eletronico",
             "index": "src/index.html",
             "browser": "src/main.ts",
+            "baseHref": "./",
             "polyfills": [
               "zone.js"
             ],
@@ -92,5 +93,8 @@
         }
       }
     }
+  },
+  "cli": {
+    "analytics": "e9c225af-b27b-42a5-ae36-ff7a47eeecd4"
   }
 }
