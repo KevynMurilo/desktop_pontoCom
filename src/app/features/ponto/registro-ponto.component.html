@@ -2,18 +2,24 @@
 
   <!-- Botão de Configurações com SVG do assets -->
   <button (click)="mostrarConfiguracoes.set(true)"
-    class="absolute top-4 right-4 p-2 bg-white rounded-full shadow-lg hover:bg-gray-100 focus:outline-none z-50"
+    class="absolute top-4 right-4 p-2 bg-white rounded-full shadow-lg hover:bg-gray-100 focus:outline-none z-50 cursor-pointer"
     aria-label="Abrir configurações">
     <img src="assets/icon-configuration.svg" alt="Configurações" class="w-6 h-6" />
   </button>
-
 
   <div class="w-full max-w-lg p-6 bg-white rounded-2xl shadow-xl relative">
     <div class="flex items-center justify-between mb-6">
       <h2 class="text-2xl font-bold text-gray-800 flex items-center gap-2">
         <span>🕒</span> Registro de Ponto
       </h2>
-      <span class="px-3 py-1 text-xs font-semibold bg-green-100 text-green-700 rounded-full">Online</span>
+      <span
+        [ngClass]="{
+          'bg-green-100 text-green-700': statusOnline(),
+          'bg-red-100 text-red-700': !statusOnline()
+        }"
+        class="px-3 py-1 text-xs font-semibold rounded-full">
+        {{ statusOnline() ? 'Online' : 'Offline' }}
+      </span>
     </div>
 
     <form [formGroup]="form" (ngSubmit)="registrarPonto()" class="space-y-6">

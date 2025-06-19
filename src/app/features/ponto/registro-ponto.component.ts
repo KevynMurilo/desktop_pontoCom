@@ -1,9 +1,10 @@
-import { Component, signal, computed, inject } from '@angular/core';
+import { Component, signal, computed, inject, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RegistroPontoService } from './registro-ponto.service';
 import { NgxMaskDirective, provideNgxMask } from 'ngx-mask';
 import { ConfiguracoesComponent } from '../configuracoes/configuracoes.component';
+import { interval } from 'rxjs';
 
 @Component({
   selector: 'app-registro-ponto',
@@ -30,11 +31,12 @@ export class RegistroPontoComponent {
   fotoCapturada = computed(() => this.fotoTirada());
   mostrarConfiguracoes = signal(false);
 
+  statusOnline = signal(false);
   imagemCapturada: string | null = null;
   videoElement!: HTMLVideoElement;
   stream!: MediaStream;
-  deviceIdentifier = 'abc123';
 
+  deviceIdentifier = (window as any).device?.getId?.() || 'desconhecido';
   dispositivosVideo: MediaDeviceInfo[] = [];
   dispositivoSelecionadoId: string | null = null;
 
@@ -49,6 +51,12 @@ export class RegistroPontoComponent {
     }
 
     this.iniciarVideoComPermissao();
+    this.verificarStatus();
+    interval(10000).subscribe(() => this.verificarStatus());
+  }
+
+  verificarStatus() {
+    this.service.verificarStatus().subscribe(online => this.statusOnline.set(online));
   }
 
   async listarDispositivos() {
@@ -110,7 +118,6 @@ export class RegistroPontoComponent {
     canvas.getContext('2d')?.drawImage(this.videoElement, 0, 0);
     this.imagemCapturada = canvas.toDataURL('image/jpeg');
     this.fotoTirada.set(true);
-
     this.videoElement.srcObject = null;
     this.stream.getTracks().forEach(track => track.stop());
   }
@@ -119,7 +126,6 @@ export class RegistroPontoComponent {
     this.imagemCapturada = null;
     this.fotoTirada.set(false);
     this.carregandoCamera.set(true);
-
     requestAnimationFrame(() => {
       this.solicitarPermissaoECapturar();
     });

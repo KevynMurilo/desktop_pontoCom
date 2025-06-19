@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { Observable, of } from 'rxjs';
+import { catchError, map } from 'rxjs/operators';
 
 export interface RegistroPontoDTO {
   cpf: string;
@@ -12,7 +13,16 @@ export interface RegistroPontoDTO {
 
 @Injectable()
 export class RegistroPontoService {
+  private readonly baseUrl = 'http://10.1.59.59:8080/api';
+
   constructor(private http: HttpClient) {}
+
+  verificarStatus(): Observable<boolean> {
+    return this.http.get(`${this.baseUrl}/status`).pipe(
+      map(() => true),
+      catchError(() => of(false))
+    );
+  }
 
   registrar(data: RegistroPontoDTO): Observable<any> {
     const formData = new FormData();
@@ -22,8 +32,6 @@ export class RegistroPontoService {
     formData.append('longitude', data.longitude.toString());
     formData.append('deviceIdentifier', data.deviceIdentifier);
 
-    var response = this.http.post('http://10.1.59.59:8080/api/timerecord', formData);
-    console.log(response);
-    return response;
+    return this.http.post(`${this.baseUrl}/timerecord`, formData);
   }
 }
