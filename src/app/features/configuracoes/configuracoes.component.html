@@ -1,0 +1,26 @@
+<div class="fixed inset-0 backdrop-blur-sm bg-white/10 flex items-center justify-center z-50">
+  <div class="bg-white rounded-xl shadow-xl p-6 w-full max-w-md">
+    <h2 class="text-lg font-bold mb-4">⚙️ Configurações</h2>
+
+    <p><strong>Código do dispositivo:</strong></p>
+    <p class="mb-4 text-blue-700 font-mono">{{ deviceIdentifier }}</p>
+
+    <label class="block text-sm font-semibold mb-1">Selecionar câmera:</label>
+    <select
+      class="w-full px-4 py-2 border border-gray-300 rounded mb-6"
+      [value]="dispositivoSelecionadoId"
+      (change)="onSelecionarDispositivo($event)">
+      <option *ngFor="let d of dispositivosVideo" [value]="d.deviceId">
+        {{ d.label || 'Câmera ' + d.deviceId }}
+      </option>
+    </select>
+
+    <div class="text-right">
+      <button
+        (click)="fechar.emit()"
+        class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">
+        Fechar
+      </button>
+    </div>
+  </div>
+</div>

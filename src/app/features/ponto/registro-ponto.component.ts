@@ -3,61 +3,104 @@ import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RegistroPontoService } from './registro-ponto.service';
 import { NgxMaskDirective, provideNgxMask } from 'ngx-mask';
+import { ConfiguracoesComponent } from '../configuracoes/configuracoes.component';
 
 @Component({
   selector: 'app-registro-ponto',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, NgxMaskDirective],
+  imports: [
+    CommonModule,
+    ReactiveFormsModule,
+    NgxMaskDirective,
+    ConfiguracoesComponent
+  ],
   templateUrl: './registro-ponto.component.html',
-  providers: [RegistroPontoService, provideNgxMask()],
+  providers: [RegistroPontoService, provideNgxMask()]
 })
 export class RegistroPontoComponent {
   private fb = inject(FormBuilder);
   private service = inject(RegistroPontoService);
 
   form = this.fb.group({
-    cpf: ['', [Validators.required, Validators.pattern(/^\d{3}\.\d{3}\.\d{3}-\d{2}$/)]],
+    cpf: ['', [Validators.required, Validators.pattern(/^\d{11}$/)]]
   });
 
+  carregandoCamera = signal(true);
   fotoTirada = signal(false);
   fotoCapturada = computed(() => this.fotoTirada());
+  mostrarConfiguracoes = signal(false);
 
   imagemCapturada: string | null = null;
   videoElement!: HTMLVideoElement;
   stream!: MediaStream;
   deviceIdentifier = 'abc123';
 
-  ngAfterViewInit() {
-    this.solicitarPermissaoECapturar();
+  dispositivosVideo: MediaDeviceInfo[] = [];
+  dispositivoSelecionadoId: string | null = null;
+
+  async ngAfterViewInit() {
+    await this.listarDispositivos();
+
+    const salvo = localStorage.getItem('cameraSelecionada');
+    if (salvo && this.dispositivosVideo.some(d => d.deviceId === salvo)) {
+      this.dispositivoSelecionadoId = salvo;
+    } else if (this.dispositivosVideo.length > 0) {
+      this.dispositivoSelecionadoId = this.dispositivosVideo[0].deviceId;
+    }
+
+    this.iniciarVideoComPermissao();
+  }
+
+  async listarDispositivos() {
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    this.dispositivosVideo = devices.filter(d => d.kind === 'videoinput');
+  }
+
+  iniciarVideoComPermissao() {
+    navigator.permissions?.query({ name: 'camera' as PermissionName })
+      .then((result) => {
+        if (result.state === 'denied') {
+          alert('Permissão de câmera negada.');
+          return;
+        }
+        this.solicitarPermissaoECapturar();
+      })
+      .catch(() => {
+        this.solicitarPermissaoECapturar();
+      });
   }
 
   solicitarPermissaoECapturar() {
-    this.videoElement = document.getElementById('video') as HTMLVideoElement;
-
-    if (!navigator.mediaDevices?.getUserMedia) {
-      alert('Este navegador não suporta acesso à câmera.');
-      return;
-    }
-
-    navigator.permissions?.query({ name: 'camera' as PermissionName }).then((result) => {
-      if (result.state === 'denied') {
-        alert('Permissão de câmera negada.');
+    requestAnimationFrame(() => {
+      this.videoElement = document.getElementById('video') as HTMLVideoElement;
+      if (!this.videoElement) {
+        console.error('Elemento <video> não encontrado.');
         return;
       }
-      this.iniciarCamera();
-    }).catch(() => {
-      this.iniciarCamera();
-    });
-  }
 
-  iniciarCamera() {
-    navigator.mediaDevices.getUserMedia({ video: true })
-      .then(stream => {
-        this.stream = stream;
-        this.videoElement.srcObject = stream;
-        this.videoElement.play();
-      })
-      .catch(() => alert('Erro ao acessar a câmera.'));
+      this.carregandoCamera.set(true);
+
+      const constraints: MediaStreamConstraints = {
+        video: {
+          deviceId: this.dispositivoSelecionadoId ? { exact: this.dispositivoSelecionadoId } : undefined
+        }
+      };
+
+      navigator.mediaDevices.getUserMedia(constraints)
+        .then(stream => {
+          this.stream = stream;
+          this.videoElement.srcObject = stream;
+          this.videoElement.onloadedmetadata = () => {
+            this.videoElement.play();
+            this.carregandoCamera.set(false);
+          };
+        })
+        .catch(err => {
+          console.error('Erro ao acessar a câmera:', err);
+          alert(`Erro ao acessar a câmera: ${err.name} - ${err.message}`);
+          this.carregandoCamera.set(false);
+        });
+    });
   }
 
   tirarFoto() {
@@ -68,7 +111,6 @@ export class RegistroPontoComponent {
     this.imagemCapturada = canvas.toDataURL('image/jpeg');
     this.fotoTirada.set(true);
 
-    // Para a câmera
     this.videoElement.srcObject = null;
     this.stream.getTracks().forEach(track => track.stop());
   }
@@ -76,10 +118,14 @@ export class RegistroPontoComponent {
   repetirFoto() {
     this.imagemCapturada = null;
     this.fotoTirada.set(false);
-    setTimeout(() => this.solicitarPermissaoECapturar(), 0);
+    this.carregandoCamera.set(true);
+
+    requestAnimationFrame(() => {
+      this.solicitarPermissaoECapturar();
+    });
   }
 
-  public async registrarPonto() {
+  registrarPonto = async () => {
     if (!this.form.valid || !this.imagemCapturada) return;
 
     const blob = await (await fetch(this.imagemCapturada)).blob();
@@ -87,8 +133,9 @@ export class RegistroPontoComponent {
 
     navigator.geolocation.getCurrentPosition(
       (pos) => {
+        const cpfLimpo = this.form.value.cpf!;
         this.service.registrar({
-          cpf: this.form.value.cpf!,
+          cpf: cpfLimpo,
           imagem: file,
           latitude: pos.coords.latitude,
           longitude: pos.coords.longitude,
@@ -102,5 +149,15 @@ export class RegistroPontoComponent {
         alert("Erro ao obter localização. Ative o GPS.");
       }
     );
+  };
+
+  fecharModalConfiguracoes() {
+    this.mostrarConfiguracoes.set(false);
+  }
+
+  onSelecionarDispositivo(deviceId: string) {
+    this.dispositivoSelecionadoId = deviceId;
+    localStorage.setItem('cameraSelecionada', deviceId);
+    this.repetirFoto();
   }
 }

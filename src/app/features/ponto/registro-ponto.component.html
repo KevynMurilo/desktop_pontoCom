@@ -1,4 +1,13 @@
-<div class="min-h-screen flex items-center justify-center bg-gray-100 px-4 py-8">
+<div class="min-h-screen flex items-center justify-center bg-gray-100 px-4 py-8 relative">
+
+  <!-- Botão de Configurações com SVG do assets -->
+  <button (click)="mostrarConfiguracoes.set(true)"
+    class="absolute top-4 right-4 p-2 bg-white rounded-full shadow-lg hover:bg-gray-100 focus:outline-none z-50"
+    aria-label="Abrir configurações">
+    <img src="assets/icon-configuration.svg" alt="Configurações" class="w-6 h-6" />
+  </button>
+
+
   <div class="w-full max-w-lg p-6 bg-white rounded-2xl shadow-xl relative">
     <div class="flex items-center justify-between mb-6">
       <h2 class="text-2xl font-bold text-gray-800 flex items-center gap-2">
@@ -11,27 +20,31 @@
       <!-- CPF -->
       <div>
         <label class="block text-sm font-semibold text-gray-700 mb-1">CPF</label>
-        <input type="text"
-               formControlName="cpf"
-               placeholder="000.000.000-00"
-               mask="000.000.000-00"
-               class="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm" />
+        <input type="text" formControlName="cpf" placeholder="000.000.000-00" mask="000.000.000-00"
+          [dropSpecialCharacters]="true"
+          class="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm" />
       </div>
 
       <!-- Câmera ou Foto Capturada -->
-      <div class="relative border-2 border-dashed border-gray-300 rounded-lg overflow-hidden shadow-inner h-64 bg-black">
-        <video
-          *ngIf="!fotoCapturada()"
-          id="video"
-          autoplay
-          playsinline
-          muted
+      <div
+        class="relative border-2 border-dashed border-gray-300 rounded-lg overflow-hidden shadow-inner h-64 bg-black">
+
+        <!-- Spinner enquanto a câmera carrega -->
+        <div *ngIf="carregandoCamera() && !fotoCapturada()"
+          class="absolute inset-0 z-20 flex items-center justify-center bg-black bg-opacity-80">
+          <svg class="animate-spin h-10 w-10 text-white" xmlns="http://www.w3.org/2000/svg" fill="none"
+            viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z">
+            </path>
+          </svg>
+        </div>
+
+        <video *ngIf="!fotoCapturada()" id="video" autoplay playsinline muted
           class="absolute inset-0 w-full h-full object-cover z-10 rounded">
         </video>
 
-        <img
-          *ngIf="fotoCapturada()"
-          [src]="imagemCapturada"
+        <img *ngIf="fotoCapturada()" [src]="imagemCapturada"
           class="absolute inset-0 w-full h-full object-cover z-10 rounded" />
 
         <div class="absolute inset-0 pointer-events-none border-4 border-blue-400 opacity-10 rounded z-20"></div>
@@ -49,7 +62,7 @@
           🔁 Repetir Foto
         </button>
 
-        <button type="submit" [disabled]="!form.valid || !fotoCapturada()"
+        <button type="submit" [disabled]="form.invalid || !fotoCapturada()"
           class="w-1/2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg flex items-center justify-center gap-2 shadow disabled:opacity-50 cursor-pointer">
           🕒 Registrar
         </button>
@@ -57,3 +70,9 @@
     </form>
   </div>
 </div>
+
+<!-- Modal de Configurações -->
+<app-configuracoes *ngIf="mostrarConfiguracoes()" [deviceIdentifier]="deviceIdentifier"
+  [dispositivosVideo]="dispositivosVideo" [dispositivoSelecionadoId]="dispositivoSelecionadoId"
+  (selecionarDispositivo)="onSelecionarDispositivo($event)" (fechar)="fecharModalConfiguracoes()">
+</app-configuracoes>
