@@ -12,7 +12,7 @@ function createWindow() {
     }
   });
 
-  const indexPath = path.join(__dirname, '../dist/ponto-eletronico/browser/index.html');
+  const indexPath = path.join(__dirname, '../frontend/dist/ponto-eletronico/browser/index.html');
   const fileUrl = pathToFileURL(indexPath).toString();
 
   win.loadURL(decodeURIComponent(fileUrl)).catch(err => {
@@ -24,25 +24,19 @@ function startBackend() {
   try {
     const backendDir = path.join(__dirname, '../backend');
 
-    // Backend local
-    const backend = spawn('node', ['src/server.js'], {
+    spawn('node', ['src/server.js'], {
       cwd: backendDir,
       stdio: 'inherit',
       shell: true
-    });
-
-    backend.on('error', err => {
+    }).on('error', err => {
       console.error('❌ Erro ao iniciar backend local:', err.stack || err);
     });
 
-    // Serviço de sincronização
-    const sync = spawn('node', ['src/sync.service.js'], {
+    spawn('node', ['src/sync.service.js'], {
       cwd: backendDir,
       stdio: 'inherit',
       shell: true
-    });
-
-    sync.on('error', err => {
+    }).on('error', err => {
       console.error('❌ Erro ao iniciar sincronização:', err.stack || err);
     });
 

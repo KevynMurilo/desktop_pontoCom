@@ -1,16 +1,33 @@
-# Angular frontend
-/dist
-/tmp
-/out-tsc
-/bazel-out
+# --------------------------
+# FRONTEND (Angular)
+# --------------------------
 
-# Backend (local)
+frontend/dist/
+frontend/tmp/
+frontend/out-tsc/
+frontend/.angular/
+frontend/.sass-cache/
+frontend/coverage/
+
+# --------------------------
+# BACKEND (Express + SQLite)
+# --------------------------
+
 backend/node_modules/
 backend/uploads/
 backend/registros.db
 
-# node_modules (raiz ou qualquer subdiretório)
-node_modules/
+# --------------------------
+# ELECTRON
+# --------------------------
+
+electron/node_modules/
+
+# --------------------------
+# GERAL
+# --------------------------
+
+# node_modules em qualquer pasta (segurança extra)
 **/node_modules/
 
 # Logs
@@ -36,14 +53,10 @@ yarn-error.log*
 
 # Históricos e caches
 .history/
-.sass-cache/
-/.angular/cache
-/connect.lock
-/coverage
-/libpeerconnection.log
 testem.log
-/typings
+libpeerconnection.log
+/connect.lock
 
-# Arquivos do sistema
+# Sistema
 .DS_Store
 Thumbs.db
