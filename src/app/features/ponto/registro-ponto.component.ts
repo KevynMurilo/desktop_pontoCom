@@ -56,7 +56,14 @@ export class RegistroPontoComponent {
   }
 
   verificarStatus() {
-    this.service.verificarStatus().subscribe(online => this.statusOnline.set(online));
+    this.service.verificarStatus().subscribe({
+      next: (online) => {
+        this.statusOnline.set(online);
+      },
+      error: () => {
+        this.statusOnline.set(false);
+      }
+    });
   }
 
   async listarDispositivos() {

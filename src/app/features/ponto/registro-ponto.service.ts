@@ -13,12 +13,12 @@ export interface RegistroPontoDTO {
 
 @Injectable()
 export class RegistroPontoService {
-  private readonly baseUrl = 'http://10.1.59.59:8080/api';
+  private readonly baseUrl = 'http://localhost:8080/api';
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient) { }
 
   verificarStatus(): Observable<boolean> {
-    return this.http.get(`${this.baseUrl}/status`).pipe(
+    return this.http.get(`${this.baseUrl}/status`, { responseType: 'text' }).pipe(
       map(() => true),
       catchError(() => of(false))
     );
