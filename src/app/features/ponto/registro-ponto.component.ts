@@ -1,4 +1,4 @@
-import { Component, signal, computed, inject, effect } from '@angular/core';
+import { Component, signal, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RegistroPontoService } from './registro-ponto.service';
@@ -30,8 +30,9 @@ export class RegistroPontoComponent {
   fotoTirada = signal(false);
   fotoCapturada = computed(() => this.fotoTirada());
   mostrarConfiguracoes = signal(false);
-
   statusOnline = signal(false);
+
+  modoEscuro = signal(localStorage.getItem('modo') === 'dark');
   imagemCapturada: string | null = null;
   videoElement!: HTMLVideoElement;
   stream!: MediaStream;
@@ -39,6 +40,11 @@ export class RegistroPontoComponent {
   deviceIdentifier = (window as any).device?.getId?.() || 'desconhecido';
   dispositivosVideo: MediaDeviceInfo[] = [];
   dispositivoSelecionadoId: string | null = null;
+
+  constructor() {
+    // Aplica o tema salvo no carregamento
+    document.documentElement.classList.toggle('dark', this.modoEscuro());
+  }
 
   async ngAfterViewInit() {
     await this.listarDispositivos();
@@ -57,13 +63,16 @@ export class RegistroPontoComponent {
 
   verificarStatus() {
     this.service.verificarStatus().subscribe({
-      next: (online) => {
-        this.statusOnline.set(online);
-      },
-      error: () => {
-        this.statusOnline.set(false);
-      }
+      next: (online) => this.statusOnline.set(online),
+      error: () => this.statusOnline.set(false)
     });
+  }
+
+  alternarTema() {
+    const ehEscuro = !this.modoEscuro();
+    this.modoEscuro.set(ehEscuro);
+    localStorage.setItem('modo', ehEscuro ? 'dark' : 'light');
+    document.documentElement.classList.toggle('dark', ehEscuro);
   }
 
   async listarDispositivos() {

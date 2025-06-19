@@ -11,6 +11,7 @@ export class ConfiguracoesComponent {
   @Input() deviceIdentifier: string = '';
   @Input() dispositivosVideo: MediaDeviceInfo[] = [];
   @Input() dispositivoSelecionadoId: string | null = null;
+  @Input() modoEscuro: boolean = false;
 
   @Output() fechar = new EventEmitter<void>();
   @Output() selecionarDispositivo = new EventEmitter<string>();
