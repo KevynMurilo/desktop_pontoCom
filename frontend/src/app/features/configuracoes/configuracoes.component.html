@@ -1,49 +1,65 @@
 <div class="fixed inset-0 flex items-center justify-center z-50 backdrop-blur-sm" [ngClass]="{
-    'bg-white/10': !modoEscuro,
-    'bg-black/30': modoEscuro
+  'bg-white/10': !modoEscuro,
+  'bg-black/30': modoEscuro
+}">
+  <div class="rounded-2xl shadow-2xl p-6 w-full max-w-md border" [ngClass]="{
+    'bg-white text-gray-800 border-gray-200': !modoEscuro,
+    'bg-gray-800 text-gray-100 border-gray-700': modoEscuro
   }">
-  <div class="rounded-xl shadow-xl p-6 w-full max-w-md" [ngClass]="{
-      'bg-white text-gray-800': !modoEscuro,
-      'bg-gray-800 text-gray-100': modoEscuro
-    }">
-    <h2 class="text-lg font-bold mb-4">⚙️ Configurações</h2>
+    <h2 class="text-xl font-bold mb-6 flex items-center gap-2">
+      ⚙️ Configurações
+    </h2>
 
-    <p><strong>Código do dispositivo:</strong></p>
-    <p class="mb-4 font-mono" [ngClass]="{
-        'text-blue-700': !modoEscuro,
-        'text-blue-300': modoEscuro
-      }">
+    <!-- Código do dispositivo -->
+    <div class="mb-6 p-4 rounded-lg border font-mono text-sm select-all" [ngClass]="{
+      'bg-gray-100 text-blue-800 border-blue-300': !modoEscuro,
+      'bg-gray-900 text-blue-300 border-blue-600': modoEscuro
+    }">
+      <p class="text-xs uppercase font-semibold opacity-70 mb-1">Código do Dispositivo</p>
       {{ deviceIdentifier }}
-    </p>
-
-    <label class="block text-sm font-semibold mb-1">
-      Selecionar câmera:
-    </label>
-    <select class="w-full px-4 py-2 rounded mb-6" [ngClass]="{
-        'bg-white text-gray-800 border border-gray-300': !modoEscuro,
-        'bg-gray-700 text-gray-100 border border-gray-600': modoEscuro
-      }" [value]="dispositivoSelecionadoId" (change)="onSelecionarDispositivo($event)">
-      <option *ngFor="let d of dispositivosVideo" [value]="d.deviceId">
-        {{ d.label || 'Câmera ' + d.deviceId }}
-      </option>
-    </select>
-
-    <!-- Botão de sincronização -->
-    <div class="text-right mb-2">
-      <button (click)="sincronizar.emit()" class="px-4 py-2 rounded text-white hover:bg-green-600 mr-2" [ngClass]="{
-      'bg-green-500': !modoEscuro,
-      'bg-green-700': modoEscuro
-    }">
-        🔄 Sincronizar Agora
-      </button>
     </div>
 
+    <!-- Se houver câmeras -->
+    <ng-container *ngIf="dispositivosVideo.length > 0; else semCamera">
+      <label class="block text-sm font-semibold mb-1">
+        Câmera ativa:
+      </label>
+      <select
+        class="w-full px-4 py-2 rounded mb-6 shadow-sm"
+        [ngClass]="{
+          'bg-white text-gray-800 border border-gray-300': !modoEscuro,
+          'bg-gray-700 text-gray-100 border border-gray-600': modoEscuro
+        }"
+        [value]="dispositivoSelecionadoId"
+        (change)="onSelecionarDispositivo($event)"
+      >
+        <option *ngFor="let d of dispositivosVideo" [value]="d.deviceId">
+          {{ d.label || 'Câmera ' + d.deviceId }}
+        </option>
+      </select>
+    </ng-container>
+
+    <!-- Fallback se não tiver câmera -->
+    <ng-template #semCamera>
+      <div class="mb-6 p-4 rounded border text-sm" [ngClass]="{
+        'bg-yellow-50 text-yellow-800 border-yellow-300': !modoEscuro,
+        'bg-yellow-900 text-yellow-100 border-yellow-700': modoEscuro
+      }">
+        🚫 Nenhuma câmera foi detectada neste dispositivo.
+      </div>
+    </ng-template>
+
+    <!-- Botão fechar -->
     <div class="text-right">
-      <button (click)="fechar.emit()" class="px-4 py-2 rounded text-white hover:bg-red-600" [ngClass]="{
-          'bg-red-500': !modoEscuro,
-          'bg-red-700': modoEscuro
-        }">
-        Fechar
+      <button
+        (click)="fechar.emit()"
+        class="px-5 py-2 rounded-lg font-semibold text-white transition"
+        [ngClass]="{
+          'bg-blue-600 hover:bg-blue-700': !modoEscuro,
+          'bg-blue-500 hover:bg-blue-600': modoEscuro
+        }"
+      >
+        Salvar e Fechar
       </button>
     </div>
   </div>

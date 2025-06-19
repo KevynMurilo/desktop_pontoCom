@@ -1,58 +1,38 @@
-<div
-  class="min-h-screen flex items-center justify-center px-4 py-8 relative"
-  [class.bg-gray-100]="!modoEscuro()"
-  [class.bg-gray-900]="modoEscuro()"
->
+<div class="min-h-screen flex items-center justify-center px-4 py-8 relative" [class.bg-gray-100]="!modoEscuro()"
+  [class.bg-gray-900]="modoEscuro()">
 
   <!-- Botão de Configurações -->
-  <button
-    (click)="mostrarConfiguracoes.set(true)"
+  <button (click)="mostrarConfiguracoes.set(true)"
     class="absolute top-4 right-4 p-2 rounded-full shadow-lg focus:outline-none z-50 cursor-pointer"
-    [class.bg-white]="!modoEscuro()"
-    [class.bg-gray-800]="modoEscuro()"
-    [class.hover\:bg-gray-100]="!modoEscuro()"
-    [class.hover\:bg-gray-700]="modoEscuro()"
-    aria-label="Abrir configurações"
-  >
-    <img src="assets/icon-configuration.svg" alt="Configurações" class="w-6 h-6" />
+    [class.bg-white]="!modoEscuro()" [class.bg-gray-800]="modoEscuro()" [class.hover\:bg-gray-100]="!modoEscuro()"
+    [class.hover\:bg-gray-700]="modoEscuro()" aria-label="Abrir configurações">
+    <img [src]="modoEscuro() ? 'assets/icon-configuration-white.svg' : 'assets/icon-configuration-black.svg'"
+      alt="Configurações" class="w-6 h-6" />
   </button>
 
+
   <!-- Botão de tema -->
-  <button
-    (click)="alternarTema()"
+  <button (click)="alternarTema()"
     class="absolute top-4 left-4 p-2 rounded-full shadow-lg focus:outline-none z-50 cursor-pointer"
-    [class.bg-white]="!modoEscuro()"
-    [class.bg-gray-800]="modoEscuro()"
-    [class.hover\:bg-gray-100]="!modoEscuro()"
-    [class.hover\:bg-gray-700]="modoEscuro()"
-    aria-label="Alternar tema"
-  >
+    [class.bg-white]="!modoEscuro()" [class.bg-gray-800]="modoEscuro()" [class.hover\:bg-gray-100]="!modoEscuro()"
+    [class.hover\:bg-gray-700]="modoEscuro()" aria-label="Alternar tema">
     <span *ngIf="modoEscuro()">☀️</span>
     <span *ngIf="!modoEscuro()">🌙</span>
   </button>
 
-  <div
-    class="w-full max-w-lg p-6 rounded-2xl shadow-xl relative"
-    [class.bg-white]="!modoEscuro()"
-    [class.bg-gray-800]="modoEscuro()"
-  >
+  <div class="w-full max-w-lg p-6 rounded-2xl shadow-xl relative" [class.bg-white]="!modoEscuro()"
+    [class.bg-gray-800]="modoEscuro()">
     <div class="flex items-center justify-between mb-6">
-      <h2
-        class="text-2xl font-bold flex items-center gap-2"
-        [class.text-gray-800]="!modoEscuro()"
-        [class.text-gray-100]="modoEscuro()"
-      >
+      <h2 class="text-2xl font-bold flex items-center gap-2" [class.text-gray-800]="!modoEscuro()"
+        [class.text-gray-100]="modoEscuro()">
         <span>🕒</span> Registro de Ponto
       </h2>
-      <span
-        class="px-3 py-1 text-xs font-semibold rounded-full"
-        [ngClass]="{
+      <span class="px-3 py-1 text-xs font-semibold rounded-full" [ngClass]="{
           'bg-green-100 text-green-700': statusOnline() && !modoEscuro(),
           'bg-green-900 text-green-300': statusOnline() && modoEscuro(),
           'bg-red-100 text-red-700': !statusOnline() && !modoEscuro(),
           'bg-red-900 text-red-300': !statusOnline() && modoEscuro()
-        }"
-      >
+        }">
         {{ statusOnline() ? 'Online' : 'Offline' }}
       </span>
     </div>
@@ -60,98 +40,52 @@
     <form [formGroup]="form" (ngSubmit)="registrarPonto()" class="space-y-6">
       <!-- CPF -->
       <div>
-        <label
-          class="block text-sm font-semibold mb-1"
-          [class.text-gray-700]="!modoEscuro()"
-          [class.text-gray-200]="modoEscuro()"
-          >CPF</label
-        >
-        <input
-          type="text"
-          formControlName="cpf"
-          placeholder="000.000.000-00"
-          mask="000.000.000-00"
+        <label class="block text-sm font-semibold mb-1" [class.text-gray-700]="!modoEscuro()"
+          [class.text-gray-200]="modoEscuro()">CPF</label>
+        <input type="text" formControlName="cpf" placeholder="000.000.000-00" mask="000.000.000-00"
           [dropSpecialCharacters]="true"
           class="w-full px-4 py-2 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-          [class.border-gray-300]="!modoEscuro()"
-          [class.bg-white]="!modoEscuro()"
-          [class.text-gray-800]="!modoEscuro()"
-          [class.border-gray-600]="modoEscuro()"
-          [class.bg-gray-700]="modoEscuro()"
-          [class.text-gray-100]="modoEscuro()"
-        />
+          [class.border-gray-300]="!modoEscuro()" [class.bg-white]="!modoEscuro()" [class.text-gray-800]="!modoEscuro()"
+          [class.border-gray-600]="modoEscuro()" [class.bg-gray-700]="modoEscuro()"
+          [class.text-gray-100]="modoEscuro()" />
       </div>
 
       <!-- Câmera ou Foto Capturada -->
-      <div
-        class="relative border-2 border-dashed rounded-lg overflow-hidden shadow-inner h-64"
-        [class.border-gray-300]="!modoEscuro()"
-        [class.border-gray-600]="modoEscuro()"
-        style="background-color: black"
-      >
+      <div class="relative border-2 border-dashed rounded-lg overflow-hidden shadow-inner h-64"
+        [class.border-gray-300]="!modoEscuro()" [class.border-gray-600]="modoEscuro()" style="background-color: black">
         <!-- Spinner enquanto a câmera carrega -->
-        <div
-          *ngIf="carregandoCamera() && !fotoCapturada()"
-          class="absolute inset-0 z-20 flex items-center justify-center bg-black bg-opacity-80"
-        >
-          <svg
-            class="animate-spin h-10 w-10 text-white"
-            xmlns="http://www.w3.org/2000/svg"
-            fill="none"
-            viewBox="0 0 24 24"
-          >
+        <div *ngIf="carregandoCamera() && !fotoCapturada()"
+          class="absolute inset-0 z-20 flex items-center justify-center bg-black bg-opacity-80">
+          <svg class="animate-spin h-10 w-10 text-white" xmlns="http://www.w3.org/2000/svg" fill="none"
+            viewBox="0 0 24 24">
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
-            <path
-              class="opacity-75"
-              fill="currentColor"
-              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-            ></path>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
           </svg>
         </div>
 
-        <video
-          *ngIf="!fotoCapturada()"
-          id="video"
-          autoplay
-          playsinline
-          muted
-          class="absolute inset-0 w-full h-full object-cover z-10 rounded"
-        ></video>
+        <video *ngIf="!fotoCapturada()" id="video" autoplay playsinline muted
+          class="absolute inset-0 w-full h-full object-cover z-10 rounded"></video>
 
-        <img
-          *ngIf="fotoCapturada()"
-          [src]="imagemCapturada"
-          class="absolute inset-0 w-full h-full object-cover z-10 rounded"
-        />
+        <img *ngIf="fotoCapturada()" [src]="imagemCapturada"
+          class="absolute inset-0 w-full h-full object-cover z-10 rounded" />
 
         <div class="absolute inset-0 pointer-events-none border-4 border-blue-400 opacity-10 rounded z-20"></div>
       </div>
 
       <!-- Botões -->
       <div class="flex gap-4">
-        <button
-          type="button"
-          (click)="tirarFoto()"
-          *ngIf="!fotoCapturada()"
-          class="w-1/2 px-4 py-2 bg-blue-100 hover:bg-blue-200 text-blue-800 font-semibold rounded-lg shadow cursor-pointer"
-        >
+        <button type="button" (click)="tirarFoto()" *ngIf="!fotoCapturada()"
+          class="w-1/2 px-4 py-2 bg-blue-100 hover:bg-blue-200 text-blue-800 font-semibold rounded-lg shadow cursor-pointer">
           📸 Tirar Foto
         </button>
 
-        <button
-          type="button"
-          (click)="repetirFoto()"
-          *ngIf="fotoCapturada()"
-          class="w-1/2 px-4 py-2 bg-yellow-100 hover:bg-yellow-200 text-yellow-800 font-semibold rounded-lg shadow cursor-pointer"
-        >
+        <button type="button" (click)="repetirFoto()" *ngIf="fotoCapturada()"
+          class="w-1/2 px-4 py-2 bg-yellow-100 hover:bg-yellow-200 text-yellow-800 font-semibold rounded-lg shadow cursor-pointer">
           🔁 Repetir Foto
         </button>
 
-        <button
-          type="submit"
-          [disabled]="form.invalid || !fotoCapturada()"
-          class="w-1/2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg flex items-center justify-center gap-2 shadow disabled:opacity-50 cursor-pointer"
-        >
+        <button type="submit" [disabled]="form.invalid || !fotoCapturada()"
+          class="w-1/2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg flex items-center justify-center gap-2 shadow disabled:opacity-50 cursor-pointer">
           🕒 Registrar
         </button>
       </div>
@@ -160,15 +94,8 @@
 </div>
 
 <!-- Modal de Configurações -->
-<app-configuracoes
-  *ngIf="mostrarConfiguracoes()"
-  [deviceIdentifier]="deviceIdentifier"
-  [dispositivosVideo]="dispositivosVideo"
-  [dispositivoSelecionadoId]="dispositivoSelecionadoId"
-  [modoEscuro]="modoEscuro()"
-  (selecionarDispositivo)="onSelecionarDispositivo($event)"
-  (fechar)="fecharModalConfiguracoes()"
-  (sincronizar)="forcarSincronizacaoManual()"
->
+<app-configuracoes *ngIf="mostrarConfiguracoes()" [deviceIdentifier]="deviceIdentifier"
+  [dispositivosVideo]="dispositivosVideo" [dispositivoSelecionadoId]="dispositivoSelecionadoId"
+  [modoEscuro]="modoEscuro()" (selecionarDispositivo)="onSelecionarDispositivo($event)"
+  (fechar)="fecharModalConfiguracoes()">
 </app-configuracoes>
-
