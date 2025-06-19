@@ -15,6 +15,7 @@ export class ConfiguracoesComponent {
 
   @Output() fechar = new EventEmitter<void>();
   @Output() selecionarDispositivo = new EventEmitter<string>();
+  @Output() sincronizar = new EventEmitter<void>();
 
   onSelecionarDispositivo(event: Event) {
     const selectElement = event.target as HTMLSelectElement;

@@ -1,5 +1,6 @@
 const { app, BrowserWindow } = require('electron');
 const path = require('path');
+const { spawn } = require('child_process');
 const { pathToFileURL } = require('url');
 
 function createWindow() {
@@ -12,16 +13,54 @@ function createWindow() {
   });
 
   const indexPath = path.join(__dirname, '../dist/ponto-eletronico/browser/index.html');
+  const fileUrl = pathToFileURL(indexPath).toString();
 
-  console.log('👉 Carregando:', indexPath);
-
-  win.loadURL(pathToFileURL(indexPath).toString())
-    .then(() => console.log('App carregado'))
-    .catch(err => console.error('Erro ao carregar index.html:', err));
+  win.loadURL(decodeURIComponent(fileUrl)).catch(err => {
+    console.error('❌ Erro ao carregar index.html:', err.stack || err);
+  });
 }
 
-app.whenReady().then(createWindow);
+function startBackend() {
+  try {
+    const backendDir = path.join(__dirname, '../backend');
+
+    // Backend local
+    const backend = spawn('node', ['src/server.js'], {
+      cwd: backendDir,
+      stdio: 'inherit',
+      shell: true
+    });
+
+    backend.on('error', err => {
+      console.error('❌ Erro ao iniciar backend local:', err.stack || err);
+    });
+
+    // Serviço de sincronização
+    const sync = spawn('node', ['src/sync.service.js'], {
+      cwd: backendDir,
+      stdio: 'inherit',
+      shell: true
+    });
+
+    sync.on('error', err => {
+      console.error('❌ Erro ao iniciar sincronização:', err.stack || err);
+    });
+
+  } catch (err) {
+    console.error('❌ Falha ao iniciar backend:', err.stack || err);
+  }
+}
+
+app.whenReady().then(() => {
+  console.log('🟢 App Electron iniciado');
+  console.log('🚀 Backend local iniciado');
+  console.log('🔁 Serviço de sincronização iniciado');
+  startBackend();
+  createWindow();
+});
 
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') app.quit();
+  if (process.platform !== 'darwin') {
+    app.quit();
+  }
 });

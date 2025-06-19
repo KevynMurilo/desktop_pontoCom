@@ -1,0 +1,76 @@
+import express from 'express';
+import cors from 'cors';
+import multer from 'multer';
+import fs from 'fs';
+import path from 'path';
+import sharp from 'sharp';
+import { fileURLToPath } from 'url';
+
+import db from './db.js';
+import { enviarRegistrosPendentes } from './sync.service.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const app = express();
+const PORT = 8080;
+
+app.use(cors());
+app.use(express.json());
+
+const uploadDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir);
+}
+
+const storage = multer.memoryStorage();
+const upload = multer({ storage });
+
+app.get('/api/status', (_, res) => res.send('OK'));
+
+app.post('/api/timerecord', upload.single('imagem'), async (req, res) => {
+  try {
+    const { cpf, latitude, longitude, deviceIdentifier } = req.body;
+
+    if (!req.file || !cpf) {
+      return res.status(400).json({ message: 'CPF e imagem são obrigatórios.' });
+    }
+
+    const nomeArquivo = `${Date.now()}_${Math.random().toString(36).substring(2, 10)}.webp`;
+    const caminhoImagem = path.join(uploadDir, nomeArquivo);
+
+    await sharp(req.file.buffer)
+      .webp({ quality: 100 }) // compressão leve, qualidade máxima
+      .toFile(caminhoImagem);
+
+    db.run(
+      `INSERT INTO registros (cpf, imagemPath, latitude, longitude, deviceIdentifier, enviado)
+       VALUES (?, ?, ?, ?, ?, 0)`,
+      [cpf, caminhoImagem, latitude, longitude, deviceIdentifier],
+      function (err) {
+        if (err) {
+          console.error('Erro ao salvar no banco:', err.message);
+          return res.status(500).json({ message: 'Erro ao salvar localmente' });
+        }
+        res.json({ message: 'Registro salvo localmente', id: this.lastID });
+      }
+    );
+  } catch (err) {
+    console.error('❌ Erro no endpoint /api/timerecord:', err);
+    res.status(500).json({ message: 'Erro interno no servidor' });
+  }
+});
+
+app.post('/api/forcar-sincronizacao', async (req, res) => {
+  try {
+    await enviarRegistrosPendentes();
+    res.send({ message: 'Sincronização manual concluída.' });
+  } catch (err) {
+    console.error('❌ Erro ao forçar sincronização:', err);
+    res.status(500).send({ message: 'Erro ao sincronizar.', error: err.message });
+  }
+});
+
+app.listen(PORT, () => {
+  console.log(`Servidor local ouvindo em http://localhost:${PORT}`);
+});

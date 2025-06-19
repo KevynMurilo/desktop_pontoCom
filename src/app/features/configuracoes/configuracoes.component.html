@@ -1,56 +1,48 @@
-<div
-  class="fixed inset-0 flex items-center justify-center z-50 backdrop-blur-sm"
-  [ngClass]="{
+<div class="fixed inset-0 flex items-center justify-center z-50 backdrop-blur-sm" [ngClass]="{
     'bg-white/10': !modoEscuro,
     'bg-black/30': modoEscuro
-  }"
->
-  <div
-    class="rounded-xl shadow-xl p-6 w-full max-w-md"
-    [ngClass]="{
+  }">
+  <div class="rounded-xl shadow-xl p-6 w-full max-w-md" [ngClass]="{
       'bg-white text-gray-800': !modoEscuro,
       'bg-gray-800 text-gray-100': modoEscuro
-    }"
-  >
+    }">
     <h2 class="text-lg font-bold mb-4">⚙️ Configurações</h2>
 
     <p><strong>Código do dispositivo:</strong></p>
-    <p
-      class="mb-4 font-mono"
-      [ngClass]="{
+    <p class="mb-4 font-mono" [ngClass]="{
         'text-blue-700': !modoEscuro,
         'text-blue-300': modoEscuro
-      }"
-    >
+      }">
       {{ deviceIdentifier }}
     </p>
 
     <label class="block text-sm font-semibold mb-1">
       Selecionar câmera:
     </label>
-    <select
-      class="w-full px-4 py-2 rounded mb-6"
-      [ngClass]="{
+    <select class="w-full px-4 py-2 rounded mb-6" [ngClass]="{
         'bg-white text-gray-800 border border-gray-300': !modoEscuro,
         'bg-gray-700 text-gray-100 border border-gray-600': modoEscuro
-      }"
-      [value]="dispositivoSelecionadoId"
-      (change)="onSelecionarDispositivo($event)"
-    >
+      }" [value]="dispositivoSelecionadoId" (change)="onSelecionarDispositivo($event)">
       <option *ngFor="let d of dispositivosVideo" [value]="d.deviceId">
         {{ d.label || 'Câmera ' + d.deviceId }}
       </option>
     </select>
 
+    <!-- Botão de sincronização -->
+    <div class="text-right mb-2">
+      <button (click)="sincronizar.emit()" class="px-4 py-2 rounded text-white hover:bg-green-600 mr-2" [ngClass]="{
+      'bg-green-500': !modoEscuro,
+      'bg-green-700': modoEscuro
+    }">
+        🔄 Sincronizar Agora
+      </button>
+    </div>
+
     <div class="text-right">
-      <button
-        (click)="fechar.emit()"
-        class="px-4 py-2 rounded text-white hover:bg-red-600"
-        [ngClass]="{
+      <button (click)="fechar.emit()" class="px-4 py-2 rounded text-white hover:bg-red-600" [ngClass]="{
           'bg-red-500': !modoEscuro,
           'bg-red-700': modoEscuro
-        }"
-      >
+        }">
         Fechar
       </button>
     </div>

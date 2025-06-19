@@ -34,4 +34,8 @@ export class RegistroPontoService {
 
     return this.http.post(`${this.baseUrl}/timerecord`, formData);
   }
+
+  forcarSincronizacao(): Observable<any> {
+    return this.http.post(`${this.baseUrl}/forcar-sincronizacao`, {});
+  }
 }

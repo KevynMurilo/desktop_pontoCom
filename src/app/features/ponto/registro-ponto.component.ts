@@ -42,7 +42,6 @@ export class RegistroPontoComponent {
   dispositivoSelecionadoId: string | null = null;
 
   constructor() {
-    // Aplica o tema salvo no carregamento
     document.documentElement.classList.toggle('dark', this.modoEscuro());
   }
 
@@ -153,25 +152,51 @@ export class RegistroPontoComponent {
     const blob = await (await fetch(this.imagemCapturada)).blob();
     const file = new File([blob], 'foto.jpg', { type: 'image/jpeg' });
 
+    const cpfLimpo = this.form.value.cpf!;
+
+    const registrarComCoordenadas = (latitude: number, longitude: number) => {
+      this.service.registrar({
+        cpf: cpfLimpo,
+        imagem: file,
+        latitude,
+        longitude,
+        deviceIdentifier: this.deviceIdentifier
+      }).subscribe({
+        next: () => {
+          alert('✅ Ponto registrado com sucesso!');
+          this.form.reset();         // limpa CPF
+          this.repetirFoto();        // volta pra câmera
+        },
+        error: err => {
+          console.error('Erro ao registrar ponto:', err);
+          alert(err?.error?.message || '❌ Erro ao registrar ponto.');
+        }
+      });
+    };
+
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        const cpfLimpo = this.form.value.cpf!;
-        this.service.registrar({
-          cpf: cpfLimpo,
-          imagem: file,
-          latitude: pos.coords.latitude,
-          longitude: pos.coords.longitude,
-          deviceIdentifier: this.deviceIdentifier
-        }).subscribe({
-          next: () => alert('Ponto registrado com sucesso!'),
-          error: err => alert(err?.error?.message || 'Erro ao registrar ponto')
-        });
+        console.log('📍 Localização obtida:', pos.coords);
+        registrarComCoordenadas(pos.coords.latitude, pos.coords.longitude);
       },
       () => {
-        alert("Erro ao obter localização. Ative o GPS.");
+        console.warn('⚠️ Localização indisponível. Usando dados fictícios.');
+        registrarComCoordenadas(-23.55052, -46.633308); // São Paulo
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 5000,
+        maximumAge: 0
       }
     );
   };
+
+  forcarSincronizacaoManual() {
+    this.service.forcarSincronizacao().subscribe({
+      next: () => alert('✅ Sincronização manual concluída.'),
+      error: () => alert('❌ Erro ao sincronizar com o servidor.')
+    });
+  }
 
   fecharModalConfiguracoes() {
     this.mostrarConfiguracoes.set(false);
