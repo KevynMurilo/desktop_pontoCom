@@ -2,15 +2,24 @@ const { app, BrowserWindow } = require('electron');
 const path = require('path');
 const { spawn } = require('child_process');
 const { pathToFileURL } = require('url');
+const { machineIdSync } = require('node-machine-id');
+
+// Gera ID único persistente (mesmo após formatação)
+const deviceId = machineIdSync(true);
+console.log('🆔 ID gerado com sucesso:', deviceId);
 
 function createWindow() {
   const win = new BrowserWindow({
     width: 1280,
     height: 800,
     webPreferences: {
-      contextIsolation: true
+      contextIsolation: true,
+      preload: path.join(__dirname, 'preload.js'),
+      additionalArguments: [`--device-id=${deviceId}`]
     }
   });
+
+  console.log('🧩 Caminho resolvido do preload:', path.join(__dirname, 'preload.js'));
 
   const indexPath = path.join(__dirname, '../frontend/dist/ponto-eletronico/browser/index.html');
   const fileUrl = pathToFileURL(indexPath).toString();
@@ -24,6 +33,7 @@ function startBackend() {
   try {
     const backendDir = path.join(__dirname, '../backend');
 
+    // Inicia o backend local (Express)
     spawn('node', ['src/server.js'], {
       cwd: backendDir,
       stdio: 'inherit',
@@ -32,6 +42,7 @@ function startBackend() {
       console.error('❌ Erro ao iniciar backend local:', err.stack || err);
     });
 
+    // Inicia o serviço de sincronização
     spawn('node', ['src/sync.service.js'], {
       cwd: backendDir,
       stdio: 'inherit',

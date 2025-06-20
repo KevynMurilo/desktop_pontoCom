@@ -37,7 +37,7 @@ export class RegistroPontoComponent {
   videoElement!: HTMLVideoElement;
   stream!: MediaStream;
 
-  deviceIdentifier = (window as any).device?.getId?.() || 'desconhecido';
+  deviceIdentifier = 'desconhecido';
   dispositivosVideo: MediaDeviceInfo[] = [];
   dispositivoSelecionadoId: string | null = null;
 
@@ -46,6 +46,7 @@ export class RegistroPontoComponent {
   }
 
   async ngAfterViewInit() {
+    this.deviceIdentifier = (window as any).device?.getId?.() || 'desconhecido';
     await this.listarDispositivos();
 
     const salvo = localStorage.getItem('cameraSelecionada');

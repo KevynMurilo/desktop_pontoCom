@@ -11,12 +11,18 @@
     </h2>
 
     <!-- Código do dispositivo -->
-    <div class="mb-6 p-4 rounded-lg border font-mono text-sm select-all" [ngClass]="{
+    <div class="mb-6 p-4 rounded-lg border font-mono text-sm relative" [ngClass]="{
       'bg-gray-100 text-blue-800 border-blue-300': !modoEscuro,
       'bg-gray-900 text-blue-300 border-blue-600': modoEscuro
     }">
       <p class="text-xs uppercase font-semibold opacity-70 mb-1">Código do Dispositivo</p>
-      {{ deviceIdentifier }}
+      <span class="select-all break-all">{{ deviceIdentifier }}</span>
+
+      <!-- Botão copiar -->
+      <button (click)="copiarCodigo()"
+        class="absolute top-2 right-2 text-blue-500 hover:text-blue-700 transition text-sm cursor-pointer" title="Copiar código">
+        📋
+      </button>
     </div>
 
     <!-- Se houver câmeras -->
@@ -24,15 +30,10 @@
       <label class="block text-sm font-semibold mb-1">
         Câmera ativa:
       </label>
-      <select
-        class="w-full px-4 py-2 rounded mb-6 shadow-sm"
-        [ngClass]="{
+      <select class="w-full px-4 py-2 rounded mb-6 shadow-sm" [ngClass]="{
           'bg-white text-gray-800 border border-gray-300': !modoEscuro,
           'bg-gray-700 text-gray-100 border border-gray-600': modoEscuro
-        }"
-        [value]="dispositivoSelecionadoId"
-        (change)="onSelecionarDispositivo($event)"
-      >
+        }" [value]="dispositivoSelecionadoId" (change)="onSelecionarDispositivo($event)">
         <option *ngFor="let d of dispositivosVideo" [value]="d.deviceId">
           {{ d.label || 'Câmera ' + d.deviceId }}
         </option>
@@ -51,14 +52,10 @@
 
     <!-- Botão fechar -->
     <div class="text-right">
-      <button
-        (click)="fechar.emit()"
-        class="px-5 py-2 rounded-lg font-semibold text-white transition"
-        [ngClass]="{
+      <button (click)="fechar.emit()" class="px-5 py-2 rounded-lg font-semibold text-white transition cursor-pointer" [ngClass]="{
           'bg-blue-600 hover:bg-blue-700': !modoEscuro,
           'bg-blue-500 hover:bg-blue-600': modoEscuro
-        }"
-      >
+        }">
         Salvar e Fechar
       </button>
     </div>
