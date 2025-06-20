@@ -5,6 +5,8 @@ import { RegistroPontoService } from './registro-ponto.service';
 import { NgxMaskDirective, provideNgxMask } from 'ngx-mask';
 import { ConfiguracoesComponent } from '../configuracoes/configuracoes.component';
 import { interval } from 'rxjs';
+import { cpfValidator } from '../../validators/cpf.validator';
+
 
 @Component({
   selector: 'app-registro-ponto',
@@ -23,7 +25,7 @@ export class RegistroPontoComponent {
   private service = inject(RegistroPontoService);
 
   form = this.fb.group({
-    cpf: ['', [Validators.required, Validators.pattern(/^\d{11}$/)]]
+    cpf: ['', [Validators.required, cpfValidator]]
   });
 
   carregandoCamera = signal(true);
@@ -31,6 +33,9 @@ export class RegistroPontoComponent {
   fotoCapturada = computed(() => this.fotoTirada());
   mostrarConfiguracoes = signal(false);
   statusOnline = signal(false);
+
+  mensagemSucesso = signal<string | null>(null);
+  mensagemErro = signal<string | null>(null);
 
   modoEscuro = signal(localStorage.getItem('modo') === 'dark');
   imagemCapturada: string | null = null;
@@ -164,26 +169,25 @@ export class RegistroPontoComponent {
         deviceIdentifier: this.deviceIdentifier
       }).subscribe({
         next: () => {
-          alert('✅ Ponto registrado com sucesso!');
-          this.form.reset();         // limpa CPF
-          this.repetirFoto();        // volta pra câmera
+          this.mensagemSucesso.set('Ponto registrado com sucesso!');
+          this.mensagemErro.set(null);
+          setTimeout(() => this.mensagemSucesso.set(null), 3000);
+
+          this.form.reset();
+          this.repetirFoto();
         },
         error: err => {
           console.error('Erro ao registrar ponto:', err);
-          alert(err?.error?.message || '❌ Erro ao registrar ponto.');
+          this.mensagemErro.set(err?.error?.message || '❌ Erro ao registrar ponto.');
+          this.mensagemSucesso.set(null);
+          setTimeout(() => this.mensagemErro.set(null), 4000);
         }
       });
     };
 
     navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        console.log('📍 Localização obtida:', pos.coords);
-        registrarComCoordenadas(pos.coords.latitude, pos.coords.longitude);
-      },
-      () => {
-        console.warn('⚠️ Localização indisponível. Usando dados fictícios.');
-        registrarComCoordenadas(-23.55052, -46.633308); // São Paulo
-      },
+      (pos) => registrarComCoordenadas(pos.coords.latitude, pos.coords.longitude),
+      () => registrarComCoordenadas(-23.55052, -46.633308),
       {
         enableHighAccuracy: true,
         timeout: 5000,
