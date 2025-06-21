@@ -4,7 +4,7 @@ const { spawn } = require('child_process');
 const { pathToFileURL } = require('url');
 const { machineIdSync } = require('node-machine-id');
 
-// Gera ID único persistente (mesmo após formatação)
+// Gera um ID único persistente para o dispositivo (mesmo após formatação)
 const deviceId = machineIdSync(true);
 console.log('🆔 ID gerado com sucesso:', deviceId);
 
@@ -33,7 +33,7 @@ function startBackend() {
   try {
     const backendDir = path.join(__dirname, '../backend');
 
-    // Inicia o backend local (Express)
+    // Inicia o servidor Express local
     spawn('node', ['src/server.js'], {
       cwd: backendDir,
       stdio: 'inherit',

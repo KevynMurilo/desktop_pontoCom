@@ -8,6 +8,7 @@ import { fileURLToPath } from 'url';
 
 import db from './db.js';
 import { enviarRegistrosPendentes } from './sync.service.js';
+import { getLocationByIP } from './geo.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -30,17 +31,19 @@ app.get('/api/status', (_, res) => res.send('OK'));
 
 app.post('/api/timerecord', upload.single('imagem'), async (req, res) => {
   try {
-    const { cpf, latitude, longitude, deviceIdentifier } = req.body;
+    const { cpf, deviceIdentifier } = req.body;
 
     if (!req.file || !cpf) {
       return res.status(400).json({ message: 'CPF e imagem são obrigatórios.' });
     }
 
+    const { latitude, longitude } = await getLocationByIP(); 
+
     const nomeArquivo = `${Date.now()}_${Math.random().toString(36).substring(2, 10)}.webp`;
     const caminhoImagem = path.join(uploadDir, nomeArquivo);
 
     await sharp(req.file.buffer)
-      .webp({ quality: 100 }) // compressão leve, qualidade máxima
+      .webp({ quality: 100 })
       .toFile(caminhoImagem);
 
     db.run(

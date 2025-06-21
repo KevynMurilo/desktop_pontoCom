@@ -7,7 +7,6 @@ import { ConfiguracoesComponent } from '../configuracoes/configuracoes.component
 import { interval } from 'rxjs';
 import { cpfValidator } from '../../validators/cpf.validator';
 
-
 @Component({
   selector: 'app-registro-ponto',
   standalone: true,
@@ -160,40 +159,26 @@ export class RegistroPontoComponent {
 
     const cpfLimpo = this.form.value.cpf!;
 
-    const registrarComCoordenadas = (latitude: number, longitude: number) => {
-      this.service.registrar({
-        cpf: cpfLimpo,
-        imagem: file,
-        latitude,
-        longitude,
-        deviceIdentifier: this.deviceIdentifier
-      }).subscribe({
-        next: () => {
-          this.mensagemSucesso.set('Ponto registrado com sucesso!');
-          this.mensagemErro.set(null);
-          setTimeout(() => this.mensagemSucesso.set(null), 3000);
+    this.service.registrar({
+      cpf: cpfLimpo,
+      imagem: file,
+      deviceIdentifier: this.deviceIdentifier
+    }).subscribe({
+      next: () => {
+        this.mensagemSucesso.set('Ponto registrado com sucesso!');
+        this.mensagemErro.set(null);
+        setTimeout(() => this.mensagemSucesso.set(null), 3000);
 
-          this.form.reset();
-          this.repetirFoto();
-        },
-        error: err => {
-          console.error('Erro ao registrar ponto:', err);
-          this.mensagemErro.set(err?.error?.message || '❌ Erro ao registrar ponto.');
-          this.mensagemSucesso.set(null);
-          setTimeout(() => this.mensagemErro.set(null), 4000);
-        }
-      });
-    };
-
-    navigator.geolocation.getCurrentPosition(
-      (pos) => registrarComCoordenadas(pos.coords.latitude, pos.coords.longitude),
-      () => registrarComCoordenadas(-23.55052, -46.633308),
-      {
-        enableHighAccuracy: true,
-        timeout: 5000,
-        maximumAge: 0
+        this.form.reset();
+        this.repetirFoto();
+      },
+      error: err => {
+        console.error('Erro ao registrar ponto:', err);
+        this.mensagemErro.set(err?.error?.message || '❌ Erro ao registrar ponto.');
+        this.mensagemSucesso.set(null);
+        setTimeout(() => this.mensagemErro.set(null), 4000);
       }
-    );
+    });
   };
 
   forcarSincronizacaoManual() {

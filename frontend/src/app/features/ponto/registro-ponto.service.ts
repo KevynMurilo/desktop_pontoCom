@@ -6,8 +6,6 @@ import { catchError, map } from 'rxjs/operators';
 export interface RegistroPontoDTO {
   cpf: string;
   imagem: File;
-  latitude: number;
-  longitude: number;
   deviceIdentifier: string;
 }
 
@@ -15,7 +13,7 @@ export interface RegistroPontoDTO {
 export class RegistroPontoService {
   private readonly baseUrl = 'http://localhost:8080/api';
 
-  constructor(private http: HttpClient) { }
+  constructor(private http: HttpClient) {}
 
   verificarStatus(): Observable<boolean> {
     return this.http.get(`${this.baseUrl}/status`, { responseType: 'text' }).pipe(
@@ -28,8 +26,6 @@ export class RegistroPontoService {
     const formData = new FormData();
     formData.append('cpf', data.cpf);
     formData.append('imagem', data.imagem);
-    formData.append('latitude', data.latitude.toString());
-    formData.append('longitude', data.longitude.toString());
     formData.append('deviceIdentifier', data.deviceIdentifier);
 
     return this.http.post(`${this.baseUrl}/timerecord`, formData);
