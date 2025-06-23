@@ -20,7 +20,8 @@
 
       <!-- Botão copiar -->
       <button (click)="copiarCodigo()"
-        class="absolute top-2 right-2 text-blue-500 hover:text-blue-700 transition text-sm cursor-pointer" title="Copiar código">
+        class="absolute top-2 right-2 text-blue-500 hover:text-blue-700 transition text-sm cursor-pointer"
+        title="Copiar código">
         📋
       </button>
     </div>
@@ -28,14 +29,20 @@
     <!-- Se houver câmeras -->
     <ng-container *ngIf="dispositivosVideo.length > 0; else semCamera">
       <label class="block text-sm font-semibold mb-1">
-        Câmera ativa:
+        Câmera ativa: {{ obterNomeCameraAtiva() }}
       </label>
-      <select class="w-full px-4 py-2 rounded mb-6 shadow-sm" [ngClass]="{
+
+      <select
+        class="w-full px-4 py-2 rounded mb-6 shadow-sm"
+        [ngClass]="{
           'bg-white text-gray-800 border border-gray-300': !modoEscuro,
           'bg-gray-700 text-gray-100 border border-gray-600': modoEscuro
-        }" [value]="dispositivoSelecionadoId" (change)="onSelecionarDispositivo($event)">
+        }"
+        [(ngModel)]="dispositivoSelecionadoIdInterno"
+        (ngModelChange)="emitirMudancaCamera($event)"
+      >
         <option *ngFor="let d of dispositivosVideo" [value]="d.deviceId">
-          {{ d.label || 'Câmera ' + d.deviceId }}
+          {{ d.label || 'Câmera ' + (dispositivosVideo.indexOf(d) + 1) }}
         </option>
       </select>
     </ng-container>
@@ -52,7 +59,8 @@
 
     <!-- Botão fechar -->
     <div class="text-right">
-      <button (click)="fechar.emit()" class="px-5 py-2 rounded-lg font-semibold text-white transition cursor-pointer" [ngClass]="{
+      <button (click)="fechar.emit()" class="px-5 py-2 rounded-lg font-semibold text-white transition cursor-pointer"
+        [ngClass]="{
           'bg-blue-600 hover:bg-blue-700': !modoEscuro,
           'bg-blue-500 hover:bg-blue-600': modoEscuro
         }">

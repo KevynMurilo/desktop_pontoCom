@@ -195,6 +195,13 @@ export class RegistroPontoComponent {
   onSelecionarDispositivo(deviceId: string) {
     this.dispositivoSelecionadoId = deviceId;
     localStorage.setItem('cameraSelecionada', deviceId);
-    this.repetirFoto();
+
+    if (this.stream) {
+      this.stream.getTracks().forEach(track => track.stop());
+    }
+
+    this.carregandoCamera.set(true);
+    this.solicitarPermissaoECapturar();
   }
+
 }

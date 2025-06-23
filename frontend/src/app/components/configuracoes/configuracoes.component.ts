@@ -1,13 +1,14 @@
-import { Component, Input, Output, EventEmitter } from '@angular/core';
+import { Component, Input, Output, EventEmitter, OnChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 
 @Component({
   selector: 'app-configuracoes',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, FormsModule],
   templateUrl: './configuracoes.component.html'
 })
-export class ConfiguracoesComponent {
+export class ConfiguracoesComponent implements OnChanges {
   @Input() deviceIdentifier: string = '';
   @Input() dispositivosVideo: MediaDeviceInfo[] = [];
   @Input() dispositivoSelecionadoId: string | null = null;
@@ -16,9 +17,19 @@ export class ConfiguracoesComponent {
   @Output() fechar = new EventEmitter<void>();
   @Output() selecionarDispositivo = new EventEmitter<string>();
 
-  onSelecionarDispositivo(event: Event) {
-    const selectElement = event.target as HTMLSelectElement;
-    this.selecionarDispositivo.emit(selectElement.value);
+  dispositivoSelecionadoIdInterno: string | null = null;
+
+  ngOnChanges(): void {
+    this.dispositivoSelecionadoIdInterno = this.dispositivoSelecionadoId;
+  }
+
+  emitirMudancaCamera(deviceId: string) {
+    this.selecionarDispositivo.emit(deviceId);
+  }
+
+  obterNomeCameraAtiva(): string {
+    const atual = this.dispositivosVideo.find(d => d.deviceId === this.dispositivoSelecionadoIdInterno);
+    return atual?.label || 'Desconhecida';
   }
 
   copiarCodigo() {
@@ -41,7 +52,7 @@ export class ConfiguracoesComponent {
   fallbackCopiar(texto: string) {
     const temp = document.createElement('textarea');
     temp.value = texto;
-    temp.style.position = 'fixed'; 
+    temp.style.position = 'fixed';
     temp.style.opacity = '0';
     document.body.appendChild(temp);
     temp.focus();
