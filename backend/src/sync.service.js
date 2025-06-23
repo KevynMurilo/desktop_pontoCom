@@ -6,7 +6,7 @@ import db from './db.js';
 import { fileURLToPath } from 'url';
 
 // 🔧 Configurações
-const API_PREFEITURA = 'http://localhost:8082/api/timerecord';
+const API_PREFEITURA = 'http://10.1.59.59:8082/api/timerecord';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 

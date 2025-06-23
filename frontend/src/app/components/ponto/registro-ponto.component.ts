@@ -99,36 +99,36 @@ export class RegistroPontoComponent {
   }
 
   solicitarPermissaoECapturar() {
-    requestAnimationFrame(() => {
-      this.videoElement = document.getElementById('video') as HTMLVideoElement;
-      if (!this.videoElement) {
-        console.error('Elemento <video> não encontrado.');
-        return;
+    this.videoElement = document.getElementById('video') as HTMLVideoElement;
+    if (!this.videoElement) {
+      console.error('Elemento <video> não encontrado.');
+      return;
+    }
+
+    // Garante limpeza antes de pedir novo stream
+    this.pararStreamAtual();
+    this.carregandoCamera.set(true);
+
+    const constraints: MediaStreamConstraints = {
+      video: {
+        deviceId: this.dispositivoSelecionadoId ? { exact: this.dispositivoSelecionadoId } : undefined
       }
+    };
 
-      this.carregandoCamera.set(true);
-
-      const constraints: MediaStreamConstraints = {
-        video: {
-          deviceId: this.dispositivoSelecionadoId ? { exact: this.dispositivoSelecionadoId } : undefined
-        }
-      };
-
-      navigator.mediaDevices.getUserMedia(constraints)
-        .then(stream => {
-          this.stream = stream;
-          this.videoElement.srcObject = stream;
-          this.videoElement.onloadedmetadata = () => {
-            this.videoElement.play();
-            this.carregandoCamera.set(false);
-          };
-        })
-        .catch(err => {
-          console.error('Erro ao acessar a câmera:', err);
-          alert(`Erro ao acessar a câmera: ${err.name} - ${err.message}`);
+    navigator.mediaDevices.getUserMedia(constraints)
+      .then(stream => {
+        this.stream = stream;
+        this.videoElement.srcObject = stream;
+        this.videoElement.onloadedmetadata = () => {
+          this.videoElement.play();
           this.carregandoCamera.set(false);
-        });
-    });
+        };
+      })
+      .catch(err => {
+        console.error('Erro ao acessar a câmera:', err);
+        alert(`Erro ao acessar a câmera: ${err.name} - ${err.message}`);
+        this.carregandoCamera.set(false);
+      });
   }
 
   tirarFoto() {
@@ -196,12 +196,20 @@ export class RegistroPontoComponent {
     this.dispositivoSelecionadoId = deviceId;
     localStorage.setItem('cameraSelecionada', deviceId);
 
-    if (this.stream) {
-      this.stream.getTracks().forEach(track => track.stop());
-    }
-
+    this.pararStreamAtual();
     this.carregandoCamera.set(true);
     this.solicitarPermissaoECapturar();
   }
 
+  pararStreamAtual() {
+    if (this.stream) {
+      this.stream.getTracks().forEach(track => track.stop());
+      this.stream = null!;
+    }
+
+    if (this.videoElement) {
+      this.videoElement.pause();
+      this.videoElement.srcObject = null;
+    }
+  }
 }
