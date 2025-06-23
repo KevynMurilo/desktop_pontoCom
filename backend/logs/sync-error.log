@@ -1,6 +1,2 @@
-❌ Erro ao enviar ID 1: Request failed with status code 403
-❌ Erro ao enviar ID 1: Request failed with status code 403
-❌ Erro ao enviar ID 1: Request failed with status code 403
-❌ Erro ao enviar ID 1: Request failed with status code 403
-❌ Erro ao enviar ID 1: Request failed with status code 403
-❌ Erro ao enviar ID 1: Request failed with status code 403
+❌ Erro ao enviar ID 1: Funcionário não encontrado para o CPF informado (status: 404)
+🚫 Erro permanente (status 404) para ID 1: Funcionário não encontrado para o CPF informado

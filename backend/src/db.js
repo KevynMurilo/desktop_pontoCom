@@ -25,6 +25,10 @@ db.serialize(() => {
       longitude REAL,
       deviceIdentifier TEXT,
       enviado INTEGER DEFAULT 0,
+      tentativas INTEGER DEFAULT 0,
+      ultima_tentativa TEXT,
+      erro_definitivo INTEGER DEFAULT 0,
+      erro_mensagem TEXT,
       created_at TEXT DEFAULT (datetime('now', 'localtime'))
     )
   `);
