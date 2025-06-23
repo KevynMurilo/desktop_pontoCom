@@ -9,9 +9,9 @@ const dbPath = path.join(__dirname, 'registros.db');
 
 const db = new sqlite3.Database(dbPath, (err) => {
   if (err) {
-    console.error('Erro ao conectar ao SQLite:', err.message);
+    console.error('❌ Erro ao conectar ao SQLite:', err.message);
   } else {
-    console.log('Conectado ao banco SQLite local.');
+    console.log('✅ Conectado ao banco SQLite local.');
   }
 });
 

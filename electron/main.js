@@ -1,10 +1,13 @@
 const { app, BrowserWindow } = require('electron');
 const path = require('path');
+const fs = require('fs');
 const { spawn } = require('child_process');
 const { pathToFileURL } = require('url');
 const { machineIdSync } = require('node-machine-id');
 
-// Gera um ID único persistente para o dispositivo (mesmo após formatação)
+// 🌐 Força UTF-8 no ambiente para evitar acentuação quebrada
+process.env.LANG = 'pt_BR.UTF-8';
+
 const deviceId = machineIdSync(true);
 console.log('🆔 ID gerado com sucesso:', deviceId);
 
@@ -32,22 +35,47 @@ function createWindow() {
 function startBackend() {
   try {
     const backendDir = path.join(__dirname, '../backend');
+    const logsDir = path.join(backendDir, 'logs');
 
-    // Inicia o servidor Express local
-    spawn('node', ['src/server.js'], {
+    // 📁 Garante que pasta logs exista
+    if (!fs.existsSync(logsDir)) {
+      fs.mkdirSync(logsDir);
+      console.log('📂 Pasta de logs criada:', logsDir);
+    }
+
+    // 🔵 Backend Express logs
+    const serverLog = fs.openSync(path.join(logsDir, 'server.log'), 'a');
+    const serverErr = fs.openSync(path.join(logsDir, 'server-error.log'), 'a');
+
+    const server = spawn('node', ['src/server.js'], {
       cwd: backendDir,
-      stdio: 'inherit',
+      stdio: ['ignore', serverLog, serverErr],
       shell: true
-    }).on('error', err => {
+    });
+
+    server.on('spawn', () => {
+      console.log('🚀 Backend local iniciado (logs em /backend/logs/server.log)');
+    });
+
+    server.on('error', err => {
       console.error('❌ Erro ao iniciar backend local:', err.stack || err);
     });
 
-    // Inicia o serviço de sincronização
-    spawn('node', ['src/sync.service.js'], {
+    // 🔁 Serviço de sincronização logs
+    const syncLog = fs.openSync(path.join(logsDir, 'sync.log'), 'a');
+    const syncErr = fs.openSync(path.join(logsDir, 'sync-error.log'), 'a');
+
+    const sync = spawn('node', ['src/sync.service.js'], {
       cwd: backendDir,
-      stdio: 'inherit',
+      stdio: ['ignore', syncLog, syncErr],
       shell: true
-    }).on('error', err => {
+    });
+
+    sync.on('spawn', () => {
+      console.log('🔁 Serviço de sincronização iniciado (logs em /backend/logs/sync.log)');
+    });
+
+    sync.on('error', err => {
       console.error('❌ Erro ao iniciar sincronização:', err.stack || err);
     });
 
@@ -58,8 +86,6 @@ function startBackend() {
 
 app.whenReady().then(() => {
   console.log('🟢 App Electron iniciado');
-  console.log('🚀 Backend local iniciado');
-  console.log('🔁 Serviço de sincronização iniciado');
   startBackend();
   createWindow();
 });
