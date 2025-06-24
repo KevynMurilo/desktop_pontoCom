@@ -1,4 +1,4 @@
-import { Component, signal, computed, inject } from '@angular/core';
+import { Component, signal, computed, inject, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RegistroPontoService } from './registro-ponto.service';
@@ -146,10 +146,12 @@ export class RegistroPontoComponent {
     this.imagemCapturada = null;
     this.fotoTirada.set(false);
     this.carregandoCamera.set(true);
-    requestAnimationFrame(() => {
+
+    setTimeout(() => {
       this.solicitarPermissaoECapturar();
-    });
+    }, 0);
   }
+
 
   registrarPonto = async () => {
     if (!this.form.valid || !this.imagemCapturada) return;
@@ -170,7 +172,7 @@ export class RegistroPontoComponent {
         setTimeout(() => this.mensagemSucesso.set(null), 3000);
 
         this.form.reset();
-        this.repetirFoto();
+        setTimeout(() => this.repetirFoto(), 0);
       },
       error: err => {
         console.error('Erro ao registrar ponto:', err);
@@ -210,6 +212,16 @@ export class RegistroPontoComponent {
     if (this.videoElement) {
       this.videoElement.pause();
       this.videoElement.srcObject = null;
+    }
+  }
+
+  @HostListener('document:keydown.enter', ['$event'])
+  handleEnterKey(event: KeyboardEvent) {
+    event.preventDefault();
+    if (!this.fotoCapturada()) {
+      this.tirarFoto();
+    } else if (this.form.valid) {
+      this.registrarPonto();
     }
   }
 }

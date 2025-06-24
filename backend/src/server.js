@@ -46,10 +46,12 @@ app.post('/api/timerecord', upload.single('imagem'), async (req, res) => {
       .webp({ quality: 100 })
       .toFile(caminhoImagem);
 
+    const agoraISO = new Date().toISOString().split('.')[0]; // Ex: 2025-06-24T10:45:30
+
     db.run(
-      `INSERT INTO registros (cpf, imagemPath, latitude, longitude, deviceIdentifier, enviado)
-       VALUES (?, ?, ?, ?, ?, 0)`,
-      [cpf, caminhoImagem, latitude, longitude, deviceIdentifier],
+      `INSERT INTO registros (cpf, imagemPath, latitude, longitude, deviceIdentifier, enviado, created_at)
+       VALUES (?, ?, ?, ?, ?, 0, ?)`,
+      [cpf, caminhoImagem, latitude, longitude, deviceIdentifier, agoraISO],
       function (err) {
         if (err) {
           console.error('Erro ao salvar no banco:', err.message);

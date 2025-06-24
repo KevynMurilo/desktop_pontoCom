@@ -48,7 +48,7 @@ export async function enviarRegistrosPendentes() {
           form.append('longitude', registro.longitude);
           form.append('deviceIdentifier', registro.deviceIdentifier);
           form.append('imagem', fs.createReadStream(registro.imagemPath));
-          form.append('createdAt', registro.created_at);
+          form.append('received', registro.created_at);
 
           const response = await axios.post(API_PREFEITURA, form, {
             headers: form.getHeaders()

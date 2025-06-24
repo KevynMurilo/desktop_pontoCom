@@ -1,5 +1,5 @@
-<div class="min-h-screen flex items-center justify-center px-4 py-8 relative"
-  [class.bg-gray-100]="!modoEscuro()" [class.bg-gray-900]="modoEscuro()">
+<div class="min-h-screen flex items-center justify-center px-4 py-8 relative" [class.bg-gray-100]="!modoEscuro()"
+  [class.bg-gray-900]="modoEscuro()">
 
   <!-- ✅ Toast Sucesso -->
   <div *ngIf="mensagemSucesso()"
@@ -31,11 +31,11 @@
     <span *ngIf="!modoEscuro()">🌙</span>
   </button>
 
-  <div class="w-full max-w-lg p-6 rounded-2xl shadow-xl relative"
-    [class.bg-white]="!modoEscuro()" [class.bg-gray-800]="modoEscuro()">
+  <div class="w-full max-w-lg p-6 rounded-2xl shadow-xl relative" [class.bg-white]="!modoEscuro()"
+    [class.bg-gray-800]="modoEscuro()">
     <div class="flex items-center justify-between mb-6">
-      <h2 class="text-2xl font-bold flex items-center gap-2"
-        [class.text-gray-800]="!modoEscuro()" [class.text-gray-100]="modoEscuro()">
+      <h2 class="text-2xl font-bold flex items-center gap-2" [class.text-gray-800]="!modoEscuro()"
+        [class.text-gray-100]="modoEscuro()">
         <span>🕒</span> Registro de Ponto
       </h2>
       <span class="px-3 py-1 text-xs font-semibold rounded-full" [ngClass]="{
@@ -51,13 +51,14 @@
     <form [formGroup]="form" (ngSubmit)="registrarPonto()" class="space-y-6">
       <!-- CPF -->
       <div>
-        <label class="block text-sm font-semibold mb-1"
-          [class.text-gray-700]="!modoEscuro()" [class.text-gray-200]="modoEscuro()">CPF</label>
+        <label class="block text-sm font-semibold mb-1" [class.text-gray-700]="!modoEscuro()"
+          [class.text-gray-200]="modoEscuro()">CPF</label>
         <input type="text" formControlName="cpf" placeholder="000.000.000-00" mask="000.000.000-00"
           [dropSpecialCharacters]="true"
           class="w-full px-4 py-2 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
           [class.border-gray-300]="!modoEscuro()" [class.bg-white]="!modoEscuro()" [class.text-gray-800]="!modoEscuro()"
-          [class.border-gray-600]="modoEscuro()" [class.bg-gray-700]="modoEscuro()" [class.text-gray-100]="modoEscuro()" />
+          [class.border-gray-600]="modoEscuro()" [class.bg-gray-700]="modoEscuro()"
+          [class.text-gray-100]="modoEscuro()" />
         <small *ngIf="form.get('cpf')?.invalid && form.get('cpf')?.touched"
           class="text-red-600 text-sm font-medium mt-1 block">
           CPF inválido.
@@ -66,16 +67,14 @@
 
       <!-- Câmera ou Foto Capturada -->
       <div class="relative border-2 border-dashed rounded-lg overflow-hidden shadow-inner h-64"
-        [class.border-gray-300]="!modoEscuro()" [class.border-gray-600]="modoEscuro()"
-        style="background-color: black">
+        [class.border-gray-300]="!modoEscuro()" [class.border-gray-600]="modoEscuro()" style="background-color: black">
         <!-- Spinner -->
         <div *ngIf="carregandoCamera() && !fotoCapturada()"
           class="absolute inset-0 z-20 flex items-center justify-center bg-black bg-opacity-80">
           <svg class="animate-spin h-10 w-10 text-white" xmlns="http://www.w3.org/2000/svg" fill="none"
             viewBox="0 0 24 24">
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
-            <path class="opacity-75" fill="currentColor"
-              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
           </svg>
         </div>
 
