@@ -15,6 +15,10 @@ function createWindow() {
   const win = new BrowserWindow({
     width: 1280,
     height: 800,
+    icon: "assets/icon.png",
+    title: "Ponto Eletrônico",
+    titleBarStyle: "Ponto Eletrônico",
+    
     webPreferences: {
       contextIsolation: true,
       preload: path.join(__dirname, 'preload.js'),

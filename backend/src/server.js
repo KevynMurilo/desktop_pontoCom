@@ -37,7 +37,7 @@ app.post('/api/timerecord', upload.single('imagem'), async (req, res) => {
       return res.status(400).json({ message: 'CPF e imagem são obrigatórios.' });
     }
 
-    const { latitude, longitude } = await getLocationByIP(); 
+    const { latitude, longitude } = await getLocationByIP();
 
     const nomeArquivo = `${Date.now()}_${Math.random().toString(36).substring(2, 10)}.webp`;
     const caminhoImagem = path.join(uploadDir, nomeArquivo);
@@ -46,12 +46,14 @@ app.post('/api/timerecord', upload.single('imagem'), async (req, res) => {
       .webp({ quality: 100 })
       .toFile(caminhoImagem);
 
-    const agoraISO = new Date().toISOString().split('.')[0]; // Ex: 2025-06-24T10:45:30
+    const agora = new Date();
+    const offsetBrasiliaMs = -3 * 60 * 60 * 1000;
+    const agoraBrasiliaISO = new Date(agora.getTime() + offsetBrasiliaMs).toISOString().split('.')[0];
 
     db.run(
       `INSERT INTO registros (cpf, imagemPath, latitude, longitude, deviceIdentifier, enviado, created_at)
        VALUES (?, ?, ?, ?, ?, 0, ?)`,
-      [cpf, caminhoImagem, latitude, longitude, deviceIdentifier, agoraISO],
+      [cpf, caminhoImagem, latitude, longitude, deviceIdentifier, agoraBrasiliaISO],
       function (err) {
         if (err) {
           console.error('Erro ao salvar no banco:', err.message);
