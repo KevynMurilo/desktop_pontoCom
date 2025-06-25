@@ -5,7 +5,7 @@ import path from 'path';
 import db from './db.js';
 import { fileURLToPath } from 'url';
 
-const API_PREFEITURA = 'http://177.85.251.66:8082/api/timerecord';
+const API_PREFEITURA = 'https://webhook-formosago.app.br/pontocom/api/timerecord';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -45,7 +45,7 @@ export async function enviarRegistrosPendentes() {
 
         const limiteTempo = tentativasLimites[tentativas] ?? Infinity;
         if (tempoDecorrido < limiteTempo) {
-          continue; // ainda não é hora de tentar novamente
+          continue; 
         }
 
         console.log(`🔁 Tentando enviar registro ID ${registro.id} (${registro.type})`);

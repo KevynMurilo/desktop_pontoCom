@@ -136,7 +136,7 @@ export class RegistroPontoComponent {
     this.mostrarFlash.set(true);
 
     setTimeout(() => {
-      const audio = new Audio('assets/camera-shutter.mp3');
+      const audio = new Audio('assets/camera-shutter-roger.mp3');
       audio.play();
 
       const canvas = document.createElement('canvas');
