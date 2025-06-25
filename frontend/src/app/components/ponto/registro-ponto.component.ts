@@ -28,6 +28,7 @@ export class RegistroPontoComponent {
   });
 
   carregandoCamera = signal(true);
+  mostrarFlash = signal(false);
   fotoTirada = signal(false);
   fotoCapturada = computed(() => this.fotoTirada());
   mostrarConfiguracoes = signal(false);
@@ -132,14 +133,27 @@ export class RegistroPontoComponent {
   }
 
   tirarFoto() {
-    const canvas = document.createElement('canvas');
-    canvas.width = this.videoElement.videoWidth;
-    canvas.height = this.videoElement.videoHeight;
-    canvas.getContext('2d')?.drawImage(this.videoElement, 0, 0);
-    this.imagemCapturada = canvas.toDataURL('image/jpeg');
-    this.fotoTirada.set(true);
-    this.videoElement.srcObject = null;
-    this.stream.getTracks().forEach(track => track.stop());
+    this.mostrarFlash.set(true);
+
+    setTimeout(() => {
+      const audio = new Audio('assets/camera-shutter.mp3');
+      audio.play();
+
+      const canvas = document.createElement('canvas');
+      canvas.width = this.videoElement.videoWidth;
+      canvas.height = this.videoElement.videoHeight;
+      canvas.getContext('2d')?.drawImage(this.videoElement, 0, 0);
+      this.imagemCapturada = canvas.toDataURL('image/jpeg');
+      this.fotoTirada.set(true);
+
+      this.videoElement.srcObject = null;
+      this.stream.getTracks().forEach(track => track.stop());
+
+      setTimeout(() => {
+        this.mostrarFlash.set(false);
+      }, 150);
+
+    }, 250);
   }
 
   repetirFoto() {
