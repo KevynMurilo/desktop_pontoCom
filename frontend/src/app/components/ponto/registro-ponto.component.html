@@ -13,13 +13,13 @@
 
   <!-- ✅ Toast Sucesso -->
   <div *ngIf="mensagemSucesso()"
-    class="fixed top-4 right-4 z-50 bg-green-600 text-white px-5 py-3 rounded-xl shadow-lg animate-fade-in transition-all duration-300">
+    class="fixed top-4 right-4 z-60 bg-green-600 text-white px-5 py-3 rounded-xl shadow-lg animate-fade-in transition-all duration-300">
     ✅ {{ mensagemSucesso() }}
   </div>
 
   <!-- ❌ Toast Erro -->
   <div *ngIf="mensagemErro()"
-    class="fixed top-4 right-4 z-50 bg-red-600 text-white px-5 py-3 rounded-xl shadow-lg animate-fade-in transition-all duration-300">
+    class="fixed top-4 right-4 z-60 bg-red-600 text-white px-5 py-3 rounded-xl shadow-lg animate-fade-in transition-all duration-300">
     ❌ {{ mensagemErro() }}
   </div>
 
@@ -63,7 +63,7 @@
       <div>
         <label class="block text-sm font-semibold mb-1" [class.text-gray-700]="!modoEscuro()"
           [class.text-gray-200]="modoEscuro()">CPF</label>
-        <input type="text" formControlName="cpf" placeholder="000.000.000-00" mask="000.000.000-00"
+        <input #cpfInput type="text" formControlName="cpf" placeholder="000.000.000-00" mask="000.000.000-00"
           [dropSpecialCharacters]="true"
           class="w-full px-4 py-2 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
           [class.border-gray-300]="!modoEscuro()" [class.bg-white]="!modoEscuro()" [class.text-gray-800]="!modoEscuro()"
@@ -78,7 +78,6 @@
       <!-- Câmera ou Foto Capturada -->
       <div class="relative border-2 border-dashed rounded-lg overflow-hidden shadow-inner h-64"
         [class.border-gray-300]="!modoEscuro()" [class.border-gray-600]="modoEscuro()" style="background-color: black">
-        <!-- Spinner -->
         <div *ngIf="carregandoCamera() && !fotoCapturada()"
           class="absolute inset-0 z-20 flex items-center justify-center bg-black bg-opacity-80">
           <svg class="animate-spin h-10 w-10 text-white" xmlns="http://www.w3.org/2000/svg" fill="none"
@@ -122,5 +121,5 @@
 <app-configuracoes *ngIf="mostrarConfiguracoes()" [deviceIdentifier]="deviceIdentifier"
   [dispositivosVideo]="dispositivosVideo" [dispositivoSelecionadoId]="dispositivoSelecionadoId"
   [modoEscuro]="modoEscuro()" (selecionarDispositivo)="onSelecionarDispositivo($event)"
-  (fechar)="fecharModalConfiguracoes()">
+  (fechar)="fecharModalConfiguracoes()" (aposCopiarCodigo)="focarCPF()">
 </app-configuracoes>

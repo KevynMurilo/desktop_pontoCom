@@ -1,6 +1,18 @@
-import { Component, signal, computed, inject, HostListener } from '@angular/core';
+import {
+  Component,
+  signal,
+  computed,
+  inject,
+  HostListener,
+  ViewChild,
+  ElementRef
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import {
+  FormBuilder,
+  ReactiveFormsModule,
+  Validators
+} from '@angular/forms';
 import { RegistroPontoService } from './registro-ponto.service';
 import { NgxMaskDirective, provideNgxMask } from 'ngx-mask';
 import { ConfiguracoesComponent } from '../configuracoes/configuracoes.component';
@@ -22,6 +34,8 @@ import { cpfValidator } from '../../validators/cpf.validator';
 export class RegistroPontoComponent {
   private fb = inject(FormBuilder);
   private service = inject(RegistroPontoService);
+
+  @ViewChild('cpfInput') cpfInputRef!: ElementRef<HTMLInputElement>;
 
   form = this.fb.group({
     cpf: ['', [Validators.required, cpfValidator]]
@@ -106,7 +120,6 @@ export class RegistroPontoComponent {
       return;
     }
 
-    // Garante limpeza antes de pedir novo stream
     this.pararStreamAtual();
     this.carregandoCamera.set(true);
 
@@ -152,7 +165,6 @@ export class RegistroPontoComponent {
       setTimeout(() => {
         this.mostrarFlash.set(false);
       }, 150);
-
     }, 250);
   }
 
@@ -165,7 +177,6 @@ export class RegistroPontoComponent {
       this.solicitarPermissaoECapturar();
     }, 0);
   }
-
 
   registrarPonto = async () => {
     if (!this.form.valid || !this.imagemCapturada) return;
@@ -206,6 +217,24 @@ export class RegistroPontoComponent {
 
   fecharModalConfiguracoes() {
     this.mostrarConfiguracoes.set(false);
+    setTimeout(() => {
+      this.cpfInputRef?.nativeElement?.focus();
+    }, 150);
+  }
+
+  focarCPF() {
+    this.mensagemSucesso.set('Código copiado com sucesso!');
+    setTimeout(() => {
+      this.mensagemSucesso.set(null);
+    }, 2000);
+
+    setTimeout(() => {
+      const el = this.cpfInputRef?.nativeElement;
+      if (el) {
+        el.blur();
+        el.focus();
+      }
+    }, 150);
   }
 
   onSelecionarDispositivo(deviceId: string) {

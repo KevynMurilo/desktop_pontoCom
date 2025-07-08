@@ -16,6 +16,7 @@ export class ConfiguracoesComponent implements OnChanges {
 
   @Output() fechar = new EventEmitter<void>();
   @Output() selecionarDispositivo = new EventEmitter<string>();
+  @Output() aposCopiarCodigo = new EventEmitter<void>();
 
   dispositivoSelecionadoIdInterno: string | null = null;
 
@@ -39,7 +40,9 @@ export class ConfiguracoesComponent implements OnChanges {
 
     if (navigator.clipboard && window.isSecureContext) {
       navigator.clipboard.writeText(texto)
-        .then(() => alert('✅ Código copiado!'))
+        .then(() => {
+          this.aposCopiarCodigo.emit();
+        })
         .catch(err => {
           console.warn('⚠️ Clipboard API falhou. Usando fallback.', err);
           this.fallbackCopiar(texto);
@@ -48,6 +51,7 @@ export class ConfiguracoesComponent implements OnChanges {
       this.fallbackCopiar(texto);
     }
   }
+
 
   fallbackCopiar(texto: string) {
     const temp = document.createElement('textarea');
@@ -59,13 +63,12 @@ export class ConfiguracoesComponent implements OnChanges {
     temp.select();
 
     try {
-      const sucesso = document.execCommand('copy');
-      alert(sucesso ? '✅ Código copiado!' : '❌ Não foi possível copiar.');
+      document.execCommand('copy');
     } catch (err) {
       console.error('❌ Falha ao copiar (fallback):', err);
-      alert('❌ Erro ao copiar o código.');
     }
 
     document.body.removeChild(temp);
+    this.aposCopiarCodigo.emit(); 
   }
 }
