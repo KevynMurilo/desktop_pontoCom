@@ -25,25 +25,26 @@
 
   <!-- Botão de Configurações -->
   <button (click)="mostrarConfiguracoes.set(true)"
-    class="absolute top-4 right-4 p-2 rounded-full shadow-lg focus:outline-none z-40 cursor-pointer"
-    [class.bg-white]="!modoEscuro()" [class.bg-gray-800]="modoEscuro()" [class.hover\:bg-gray-100]="!modoEscuro()"
-    [class.hover\:bg-gray-700]="modoEscuro()" aria-label="Abrir configurações">
+    class="absolute top-4 right-4 p-2 rounded-full shadow-lg z-40 cursor-pointer" [class.bg-white]="!modoEscuro()"
+    [class.bg-gray-800]="modoEscuro()" [class.hover\:bg-gray-100]="!modoEscuro()"
+    [class.hover\:bg-gray-700]="modoEscuro()" aria-label="Configurações">
     <img [src]="modoEscuro() ? 'assets/icon-configuration-white.svg' : 'assets/icon-configuration-black.svg'"
       alt="Configurações" class="w-6 h-6" />
   </button>
 
   <!-- Botão de tema -->
-  <button (click)="alternarTema()"
-    class="absolute top-4 left-4 p-2 rounded-full shadow-lg focus:outline-none z-40 cursor-pointer"
+  <button (click)="alternarTema()" class="absolute top-4 left-4 p-2 rounded-full shadow-lg z-40 cursor-pointer"
     [class.bg-white]="!modoEscuro()" [class.bg-gray-800]="modoEscuro()" [class.hover\:bg-gray-100]="!modoEscuro()"
-    [class.hover\:bg-gray-700]="modoEscuro()" aria-label="Alternar tema">
+    [class.hover\:bg-gray-700]="modoEscuro()" aria-label="Tema">
     <span *ngIf="modoEscuro()">☀️</span>
     <span *ngIf="!modoEscuro()">🌙</span>
   </button>
 
   <div class="w-full max-w-lg p-6 rounded-2xl shadow-xl relative" [class.bg-white]="!modoEscuro()"
     [class.bg-gray-800]="modoEscuro()">
-    <div class="flex items-center justify-between mb-6">
+
+    <!-- Título e status -->
+    <div class="flex items-center justify-between mb-4">
       <h2 class="text-2xl font-bold flex items-center gap-2" [class.text-gray-800]="!modoEscuro()"
         [class.text-gray-100]="modoEscuro()">
         <span>🕒</span> Registro de Ponto
@@ -58,6 +59,23 @@
       </span>
     </div>
 
+    <!-- 🔔 Alerta de pendência -->
+    <div *ngIf="avisosPendentes() > 0 && mostrarAvisoPendentes()"
+      class="mb-6 px-4 py-3 rounded-lg text-white bg-yellow-100 border border-yellow-300 text-sm font-medium flex items-center justify-between gap-2"
+      [class.text-yellow-300]="modoEscuro()" [class.bg-yellow-900]="modoEscuro()"
+      [class.border-yellow-700]="modoEscuro()">
+      <div class="flex items-center gap-2">
+        ⚠️ {{ avisosPendentes() }} registro{{ avisosPendentes() > 1 ? 's' : '' }} pendente{{ avisosPendentes() > 1 ? 's'
+        : '' }} há mais de 6 horas.
+      </div>
+      <button (click)="mostrarAvisoPendentes.set(false)"
+        class="ml-auto text-yellow-700 hover:text-yellow-900 dark:hover:text-yellow-100 text-mg font-bold cursor-pointer">
+        ❌
+      </button>
+    </div>
+
+
+    <!-- Formulário -->
     <form [formGroup]="form" (ngSubmit)="registrarPonto()" class="space-y-6">
       <!-- CPF -->
       <div>
@@ -70,9 +88,7 @@
           [class.border-gray-600]="modoEscuro()" [class.bg-gray-700]="modoEscuro()"
           [class.text-gray-100]="modoEscuro()" />
         <small *ngIf="form.get('cpf')?.invalid && form.get('cpf')?.touched"
-          class="text-red-600 text-sm font-medium mt-1 block">
-          CPF inválido.
-        </small>
+          class="text-red-600 text-sm font-medium mt-1 block">CPF inválido.</small>
       </div>
 
       <!-- Câmera ou Foto Capturada -->
@@ -99,17 +115,17 @@
       <!-- Botões -->
       <div class="flex gap-4">
         <button type="button" (click)="tirarFoto()" *ngIf="!fotoCapturada()"
-          class="w-1/2 px-4 py-2 bg-blue-100 hover:bg-blue-200 text-blue-800 font-semibold rounded-lg shadow cursor-pointer">
+          class="w-1/2 px-4 py-2 bg-blue-100 hover:bg-blue-200 text-blue-800 font-semibold rounded-lg shadow">
           📸 Tirar Foto
         </button>
 
         <button type="button" (click)="repetirFoto()" *ngIf="fotoCapturada()"
-          class="w-1/2 px-4 py-2 bg-yellow-100 hover:bg-yellow-200 text-yellow-800 font-semibold rounded-lg shadow cursor-pointer">
+          class="w-1/2 px-4 py-2 bg-yellow-100 hover:bg-yellow-200 text-yellow-800 font-semibold rounded-lg shadow">
           🔁 Repetir Foto
         </button>
 
         <button type="submit" [disabled]="form.invalid || !fotoCapturada()"
-          class="w-1/2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg flex items-center justify-center gap-2 shadow disabled:opacity-50 cursor-pointer">
+          class="w-1/2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg flex items-center justify-center gap-2 shadow disabled:opacity-50">
           🕒 Registrar
         </button>
       </div>

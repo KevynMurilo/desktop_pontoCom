@@ -60,6 +60,9 @@ export class RegistroPontoComponent {
   dispositivosVideo: MediaDeviceInfo[] = [];
   dispositivoSelecionadoId: string | null = null;
 
+  avisosPendentes = signal<number>(3);
+  mostrarAvisoPendentes = signal(true);
+
   constructor() {
     document.documentElement.classList.toggle('dark', this.modoEscuro());
   }
@@ -77,7 +80,24 @@ export class RegistroPontoComponent {
 
     this.iniciarVideoComPermissao();
     this.verificarStatus();
+    this.verificarAvisosPendentes();
+
     interval(10000).subscribe(() => this.verificarStatus());
+    interval(30000).subscribe(() => this.verificarAvisosPendentes());
+  }
+
+  verificarAvisosPendentes() {
+    this.service.verificarPendentesAntigos().subscribe({
+      next: total => {
+        if (total > 0) {
+          this.avisosPendentes.set(total);
+          this.mostrarAvisoPendentes.set(true);
+        }
+      },
+      error: () => {
+        console.warn('Erro ao verificar avisos pendentes. Mantendo valor atual.');
+      }
+    });
   }
 
   verificarStatus() {
@@ -115,10 +135,7 @@ export class RegistroPontoComponent {
 
   solicitarPermissaoECapturar() {
     this.videoElement = document.getElementById('video') as HTMLVideoElement;
-    if (!this.videoElement) {
-      console.error('Elemento <video> não encontrado.');
-      return;
-    }
+    if (!this.videoElement) return;
 
     this.pararStreamAtual();
     this.carregandoCamera.set(true);
@@ -139,7 +156,6 @@ export class RegistroPontoComponent {
         };
       })
       .catch(err => {
-        console.error('Erro ao acessar a câmera:', err);
         alert(`Erro ao acessar a câmera: ${err.name} - ${err.message}`);
         this.carregandoCamera.set(false);
       });
@@ -147,7 +163,6 @@ export class RegistroPontoComponent {
 
   tirarFoto() {
     this.mostrarFlash.set(true);
-
     setTimeout(() => {
       const audio = new Audio('assets/camera-shutter-roger.mp3');
       audio.play();
@@ -161,10 +176,7 @@ export class RegistroPontoComponent {
 
       this.videoElement.srcObject = null;
       this.stream.getTracks().forEach(track => track.stop());
-
-      setTimeout(() => {
-        this.mostrarFlash.set(false);
-      }, 150);
+      setTimeout(() => this.mostrarFlash.set(false), 150);
     }, 250);
   }
 
@@ -172,10 +184,7 @@ export class RegistroPontoComponent {
     this.imagemCapturada = null;
     this.fotoTirada.set(false);
     this.carregandoCamera.set(true);
-
-    setTimeout(() => {
-      this.solicitarPermissaoECapturar();
-    }, 0);
+    this.solicitarPermissaoECapturar();
   }
 
   registrarPonto = async () => {
@@ -183,7 +192,6 @@ export class RegistroPontoComponent {
 
     const blob = await (await fetch(this.imagemCapturada)).blob();
     const file = new File([blob], 'foto.jpg', { type: 'image/jpeg' });
-
     const cpfLimpo = this.form.value.cpf!;
 
     this.service.registrar({
@@ -200,7 +208,6 @@ export class RegistroPontoComponent {
         setTimeout(() => this.repetirFoto(), 0);
       },
       error: err => {
-        console.error('Erro ao registrar ponto:', err);
         this.mensagemErro.set(err?.error?.message || '❌ Erro ao registrar ponto.');
         this.mensagemSucesso.set(null);
         setTimeout(() => this.mensagemErro.set(null), 4000);
@@ -224,10 +231,7 @@ export class RegistroPontoComponent {
 
   focarCPF() {
     this.mensagemSucesso.set('Código copiado com sucesso!');
-    setTimeout(() => {
-      this.mensagemSucesso.set(null);
-    }, 2000);
-
+    setTimeout(() => this.mensagemSucesso.set(null), 2000);
     setTimeout(() => {
       const el = this.cpfInputRef?.nativeElement;
       if (el) {
@@ -240,7 +244,6 @@ export class RegistroPontoComponent {
   onSelecionarDispositivo(deviceId: string) {
     this.dispositivoSelecionadoId = deviceId;
     localStorage.setItem('cameraSelecionada', deviceId);
-
     this.pararStreamAtual();
     this.carregandoCamera.set(true);
     this.solicitarPermissaoECapturar();

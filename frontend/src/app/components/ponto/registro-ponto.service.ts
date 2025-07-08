@@ -13,7 +13,7 @@ export interface RegistroPontoDTO {
 export class RegistroPontoService {
   private readonly baseUrl = 'http://localhost:8080/api';
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient) { }
 
   verificarStatus(): Observable<boolean> {
     return this.http.get(`${this.baseUrl}/status`, { responseType: 'text' }).pipe(
@@ -33,5 +33,12 @@ export class RegistroPontoService {
 
   forcarSincronizacao(): Observable<any> {
     return this.http.post(`${this.baseUrl}/forcar-sincronizacao`, {});
+  }
+
+  verificarPendentesAntigos(): Observable<number> {
+    return this.http.get<{ total: number }>(`${this.baseUrl}/registros-pendentes/aviso`).pipe(
+      map(res => res.total),
+      catchError(() => of(0))
+    );
   }
 }

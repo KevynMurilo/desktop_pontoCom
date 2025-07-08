@@ -100,6 +100,23 @@ app.post('/api/forcar-sincronizacao-por-data', async (req, res) => {
   }
 });
 
+app.get('/api/registros-pendentes/aviso', (req, res) => {
+  const seisHorasAtras = new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString();
+
+  db.get(
+    `SELECT COUNT(*) as total FROM registros 
+     WHERE enviado = 0 AND erro_definitivo = 0 AND created_at <= ?`,
+    [seisHorasAtras],
+    (err, row) => {
+      if (err) {
+        console.error('Erro ao buscar pendentes antigos:', err.message);
+        return res.status(500).json({ message: 'Erro interno' });
+      }
+      res.json({ total: row.total });
+    }
+  );
+});
+
 app.listen(PORT, () => {
   console.log(`Servidor local ouvindo em http://localhost:${PORT}`);
 });
