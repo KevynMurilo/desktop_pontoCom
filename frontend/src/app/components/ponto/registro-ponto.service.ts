@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, of } from 'rxjs';
-import { catchError, map } from 'rxjs/operators';
+import { Observable, from, of } from 'rxjs';
+import { catchError, map, switchMap } from 'rxjs/operators';
 
 export interface RegistroPontoDTO {
   cpf: string;
@@ -11,14 +11,20 @@ export interface RegistroPontoDTO {
 
 @Injectable()
 export class RegistroPontoService {
-  private readonly baseUrl = 'http://localhost:8080/api';
+  constructor(private http: HttpClient) {}
 
-  constructor(private http: HttpClient) { }
+  private getBaseUrl$(): Observable<string> {
+    return from(window.backendApi.getApiBaseUrl());
+  }
 
   verificarStatus(): Observable<boolean> {
-    return this.http.get(`${this.baseUrl}/status`, { responseType: 'text' }).pipe(
-      map(() => true),
-      catchError(() => of(false))
+    return this.getBaseUrl$().pipe(
+      switchMap(baseUrl =>
+        this.http.get(`${baseUrl}/status`, { responseType: 'text' }).pipe(
+          map(() => true),
+          catchError(() => of(false))
+        )
+      )
     );
   }
 
@@ -28,17 +34,29 @@ export class RegistroPontoService {
     formData.append('imagem', data.imagem);
     formData.append('deviceIdentifier', data.deviceIdentifier);
 
-    return this.http.post(`${this.baseUrl}/timerecord`, formData);
+    return this.getBaseUrl$().pipe(
+      switchMap(baseUrl =>
+        this.http.post(`${baseUrl}/timerecord`, formData)
+      )
+    );
   }
 
   forcarSincronizacao(): Observable<any> {
-    return this.http.post(`${this.baseUrl}/forcar-sincronizacao`, {});
+    return this.getBaseUrl$().pipe(
+      switchMap(baseUrl =>
+        this.http.post(`${baseUrl}/forcar-sincronizacao`, {})
+      )
+    );
   }
 
   verificarPendentesAntigos(): Observable<number> {
-    return this.http.get<{ total: number }>(`${this.baseUrl}/registros-pendentes/aviso`).pipe(
-      map(res => res.total),
-      catchError(() => of(0))
+    return this.getBaseUrl$().pipe(
+      switchMap(baseUrl =>
+        this.http.get<{ total: number }>(`${baseUrl}/registros-pendentes/aviso`).pipe(
+          map(res => res.total),
+          catchError(() => of(0))
+        )
+      )
     );
   }
 }

@@ -7,7 +7,7 @@ import sharp from 'sharp';
 import { fileURLToPath } from 'url';
 
 import db from './db.js';
-import { enviarRegistrosPendentes } from './sync.service.js';
+import { enviarRegistrosPendentes, enviarRegistrosPorIntervalo } from './sync.service.js';
 import { getLocationByIP } from './geo.js';
 import { definirTipoParaHoje } from './definirTipoParaHoje.js';
 
@@ -15,7 +15,9 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-const PORT = 8080;
+
+// ✅ Usa porta recebida como argumento do Electron (ou 8080 como fallback)
+const PORT = process.argv[2] || 8080;
 
 app.use(cors());
 app.use(express.json());
@@ -80,8 +82,6 @@ app.post('/api/forcar-sincronizacao', async (req, res) => {
   }
 });
 
-import { enviarRegistrosPorIntervalo } from './sync.service.js';
-
 app.post('/api/forcar-sincronizacao-por-data', async (req, res) => {
   const { dataInicio, dataFim, incluirErros } = req.body;
 
@@ -118,5 +118,5 @@ app.get('/api/registros-pendentes/aviso', (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`Servidor local ouvindo em http://localhost:${PORT}`);
+  console.log(`🚀 Servidor local ouvindo em http://localhost:${PORT}`);
 });

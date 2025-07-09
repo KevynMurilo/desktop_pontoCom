@@ -1,15 +1,21 @@
-const { app, BrowserWindow } = require('electron');
+const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');
 const { pathToFileURL } = require('url');
 const { machineIdSync } = require('node-machine-id');
+const getPort = require('get-port').default;
 
-// 🌐 Força UTF-8 no ambiente para evitar acentuação quebrada
 process.env.LANG = 'pt_BR.UTF-8';
 
 const deviceId = machineIdSync(true);
 console.log('🆔 ID gerado com sucesso:', deviceId);
+
+let dynamicPort = 8080;
+
+ipcMain.handle('get-api-base-url', () => {
+  return `http://localhost:${dynamicPort}/api`;
+});
 
 function createWindow() {
   const win = new BrowserWindow({
@@ -18,7 +24,6 @@ function createWindow() {
     icon: "assets/icon.png",
     title: "Ponto Eletrônico",
     titleBarStyle: "Ponto Eletrônico",
-    
     webPreferences: {
       contextIsolation: true,
       preload: path.join(__dirname, 'preload.js'),
@@ -36,36 +41,35 @@ function createWindow() {
   });
 }
 
-function startBackend() {
+async function startBackend() {
   try {
+    dynamicPort = await getPort();
     const backendDir = path.join(__dirname, '../backend');
     const logsDir = path.join(backendDir, 'logs');
 
-    // 📁 Garante que pasta logs exista
     if (!fs.existsSync(logsDir)) {
       fs.mkdirSync(logsDir);
       console.log('📂 Pasta de logs criada:', logsDir);
     }
 
-    // 🔵 Backend Express logs
     const serverLog = fs.openSync(path.join(logsDir, 'server.log'), 'a');
     const serverErr = fs.openSync(path.join(logsDir, 'server-error.log'), 'a');
 
-    const server = spawn('node', ['src/server.js'], {
+    const server = spawn('node', ['src/server.js', dynamicPort], {
       cwd: backendDir,
       stdio: ['ignore', serverLog, serverErr],
       shell: true
     });
 
     server.on('spawn', () => {
-      console.log('🚀 Backend local iniciado (logs em /backend/logs/server.log)');
+      console.log(`🚀 Backend local iniciado na porta ${dynamicPort} (logs em /backend/logs/server.log)`);
     });
 
     server.on('error', err => {
       console.error('❌ Erro ao iniciar backend local:', err.stack || err);
     });
 
-    // 🔁 Serviço de sincronização logs
+    // 🔁 Serviço de sincronização
     const syncLog = fs.openSync(path.join(logsDir, 'sync.log'), 'a');
     const syncErr = fs.openSync(path.join(logsDir, 'sync-error.log'), 'a');
 
@@ -88,9 +92,9 @@ function startBackend() {
   }
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   console.log('🟢 App Electron iniciado');
-  startBackend();
+  await startBackend();
   createWindow();
 });
 
