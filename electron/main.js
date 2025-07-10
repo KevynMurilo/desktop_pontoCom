@@ -83,7 +83,8 @@ async function startBackend() {
     serverProcess = spawn('node', ['src/server.js'], {
       cwd: backendDir,
       stdio: ['ignore', serverLog, serverErr],
-      env: { ...process.env }
+      env: { ...process.env },
+      windowsHide: true
     });
 
     serverProcess.on('spawn', () => {
@@ -100,7 +101,8 @@ async function startBackend() {
     syncProcess = spawn('node', ['src/sync.service.js'], {
       cwd: backendDir,
       stdio: ['ignore', syncLog, syncErr],
-      env: { ...process.env }
+      env: { ...process.env },
+      windowsHide: true
     });
 
     syncProcess.on('spawn', () => {

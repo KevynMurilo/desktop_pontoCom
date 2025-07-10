@@ -5,7 +5,7 @@ import path from 'path';
 import db from './db.js';
 import { fileURLToPath } from 'url';
 
-const API_PREFEITURA = 'http://localhost:8082/api/timerecord';
+const API_PREFEITURA = 'https://webhook-formosago.app.br/pontocom/api/timerecord';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
