@@ -12,18 +12,34 @@ const deviceId = machineIdSync(true);
 console.log('🆔 ID gerado com sucesso:', deviceId);
 
 let dynamicPort = 8080;
+let serverProcess = null;
+let syncProcess = null;
 
 ipcMain.handle('get-api-base-url', () => {
   return `http://localhost:${dynamicPort}/api`;
 });
 
+function getAppDataPath() {
+  const appName = 'ponto-eletronico';
+  const basePath = app.getPath('appData');
+  try {
+    const fullPath = path.join(basePath, appName);
+    fs.mkdirSync(fullPath, { recursive: true });
+    return fullPath;
+  } catch (err) {
+    console.warn('⚠️ Erro ao acessar APPDATA, usando fallback:', err.message);
+    const fallbackPath = path.join(__dirname, 'fallback-data');
+    fs.mkdirSync(fallbackPath, { recursive: true });
+    return fallbackPath;
+  }
+}
+
 function createWindow() {
   const win = new BrowserWindow({
     width: 1280,
     height: 800,
-    icon: "assets/icon.png",
-    title: "Ponto Eletrônico",
-    titleBarStyle: "Ponto Eletrônico",
+    icon: path.join(__dirname, 'assets/icon.png'),
+    title: 'Ponto Eletrônico',
     webPreferences: {
       contextIsolation: true,
       preload: path.join(__dirname, 'preload.js'),
@@ -31,75 +47,102 @@ function createWindow() {
     }
   });
 
-  console.log('🧩 Caminho resolvido do preload:', path.join(__dirname, 'preload.js'));
-
-  const indexPath = path.join(__dirname, '../frontend/dist/ponto-eletronico/browser/index.html');
+  const indexPath = path.join(__dirname, 'frontend/dist/ponto-eletronico/browser/index.html');
   const fileUrl = pathToFileURL(indexPath).toString();
-
   win.loadURL(decodeURIComponent(fileUrl)).catch(err => {
     console.error('❌ Erro ao carregar index.html:', err.stack || err);
   });
 }
 
 async function startBackend() {
+  if (serverProcess || syncProcess) {
+    console.warn('⚠️ Backend já está rodando. Ignorando nova inicialização.');
+    return;
+  }
+
   try {
     dynamicPort = await getPort();
-    const backendDir = path.join(__dirname, '../backend');
-    const logsDir = path.join(backendDir, 'logs');
+    const backendDir = path.join(__dirname, 'backend');
 
-    if (!fs.existsSync(logsDir)) {
-      fs.mkdirSync(logsDir);
-      console.log('📂 Pasta de logs criada:', logsDir);
-    }
+    const appDataDir = getAppDataPath();
+    const uploadsDir = path.join(appDataDir, 'uploads');
+    const logsDir = path.join(appDataDir, 'logs');
+    const dbPath = path.join(appDataDir, 'registros.db');
+
+    fs.mkdirSync(uploadsDir, { recursive: true });
+    fs.mkdirSync(logsDir, { recursive: true });
+
+    process.env.APP_UPLOADS_DIR = uploadsDir;
+    process.env.APP_LOGS_DIR = logsDir;
+    process.env.APP_DB_PATH = dbPath;
+    process.env.APP_PORT = dynamicPort;
 
     const serverLog = fs.openSync(path.join(logsDir, 'server.log'), 'a');
     const serverErr = fs.openSync(path.join(logsDir, 'server-error.log'), 'a');
 
-    const server = spawn('node', ['src/server.js', dynamicPort], {
+    serverProcess = spawn('node', ['src/server.js'], {
       cwd: backendDir,
       stdio: ['ignore', serverLog, serverErr],
-      shell: true
+      env: { ...process.env }
     });
 
-    server.on('spawn', () => {
-      console.log(`🚀 Backend local iniciado na porta ${dynamicPort} (logs em /backend/logs/server.log)`);
+    serverProcess.on('spawn', () => {
+      console.log(`🚀 Backend iniciado na porta ${dynamicPort}`);
     });
 
-    server.on('error', err => {
-      console.error('❌ Erro ao iniciar backend local:', err.stack || err);
+    serverProcess.on('error', err => {
+      console.error('❌ Erro ao iniciar backend:', err);
     });
 
-    // 🔁 Serviço de sincronização
     const syncLog = fs.openSync(path.join(logsDir, 'sync.log'), 'a');
     const syncErr = fs.openSync(path.join(logsDir, 'sync-error.log'), 'a');
 
-    const sync = spawn('node', ['src/sync.service.js'], {
+    syncProcess = spawn('node', ['src/sync.service.js'], {
       cwd: backendDir,
       stdio: ['ignore', syncLog, syncErr],
-      shell: true
+      env: { ...process.env }
     });
 
-    sync.on('spawn', () => {
-      console.log('🔁 Serviço de sincronização iniciado (logs em /backend/logs/sync.log)');
+    syncProcess.on('spawn', () => {
+      console.log('🔁 Serviço de sincronização iniciado');
     });
 
-    sync.on('error', err => {
-      console.error('❌ Erro ao iniciar sincronização:', err.stack || err);
+    syncProcess.on('error', err => {
+      console.error('❌ Erro ao iniciar sync.service:', err);
     });
 
   } catch (err) {
-    console.error('❌ Falha ao iniciar backend:', err.stack || err);
+    console.error('❌ Falha ao iniciar backend:', err);
   }
 }
 
-app.whenReady().then(async () => {
-  console.log('🟢 App Electron iniciado');
-  await startBackend();
-  createWindow();
-});
+if (!app.requestSingleInstanceLock()) {
+  app.quit();
+} else {
+  app.whenReady().then(async () => {
+    console.log('🟢 App Electron iniciado');
+    await startBackend();
+    createWindow();
+  });
 
-app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
-    app.quit();
-  }
-});
+  app.on('second-instance', () => {
+    console.warn('⚠️ Tentativa de abrir segunda instância ignorada');
+  });
+
+  app.on('window-all-closed', () => {
+    if (process.platform !== 'darwin') {
+      app.quit();
+    }
+  });
+
+  app.on('before-quit', () => {
+    if (serverProcess) {
+      serverProcess.kill();
+      serverProcess = null;
+    }
+    if (syncProcess) {
+      syncProcess.kill();
+      syncProcess = null;
+    }
+  });
+}

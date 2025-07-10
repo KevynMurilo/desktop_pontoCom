@@ -4,7 +4,8 @@
   "version": "1.0.0",
   "scripts": {
     "install:all": "npm --prefix frontend install && npm --prefix backend install && npm --prefix electron install",
-    "start:web": "npm --prefix frontend run start",
-    "start:electron": "npm --prefix frontend run build && npm --prefix electron start"
+    "start:web": "npm --prefix frontend start",
+    "start:electron": "npm --prefix frontend run build && npm --prefix electron start",
+    "build:app": "npm --prefix frontend run build && npm --prefix electron run build"
   }
 }

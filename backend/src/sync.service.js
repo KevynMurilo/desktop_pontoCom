@@ -6,8 +6,13 @@ import db from './db.js';
 import { fileURLToPath } from 'url';
 
 const API_PREFEITURA = 'http://localhost:8082/api/timerecord';
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// Diretório de uploads onde as imagens devem estar salvas
+const uploadDir = process.env.APP_UPLOADS_DIR || path.join(__dirname, 'uploads');
+const logsDir = process.env.APP_LOGS_DIR || path.join(__dirname, 'logs');
 
 console.log('🟡 sync.service.js carregado');
 
@@ -24,73 +29,67 @@ export async function enviarRegistrosPendentes() {
   let tentativasRealizadas = 0;
 
   return new Promise((resolve) => {
-    db.all(
-      `SELECT * FROM registros 
-       WHERE enviado = 0 
-         AND erro_definitivo = 0 
-         AND (tentativas IS NULL OR tentativas < 5)
-       ORDER BY created_at ASC, type ASC`,
-      async (err, registros) => {
-        if (err || !registros || registros.length === 0) {
-          return resolve(0);
-        }
+    db.all(`
+      SELECT * FROM registros 
+      WHERE enviado = 0 AND erro_definitivo = 0 AND (tentativas IS NULL OR tentativas < 5)
+      ORDER BY created_at ASC, type ASC
+    `, async (err, registros) => {
+      if (err || !registros || registros.length === 0) return resolve(0);
 
-        for (const registro of registros) {
-          const tentativas = registro.tentativas ?? 0;
-          const ultimaTentativa = registro.ultima_tentativa ? new Date(registro.ultima_tentativa) : null;
-          const tempoDecorrido = ultimaTentativa ? agora - ultimaTentativa : Infinity;
+      for (const registro of registros) {
+        const tentativas = registro.tentativas ?? 0;
+        const ultimaTentativa = registro.ultima_tentativa ? new Date(registro.ultima_tentativa) : null;
+        const tempoDecorrido = ultimaTentativa ? agora - ultimaTentativa : Infinity;
+        const limiteTempo = tentativasLimites[tentativas] ?? Infinity;
 
-          const limiteTempo = tentativasLimites[tentativas] ?? Infinity;
-          if (tempoDecorrido < limiteTempo) continue;
+        if (tempoDecorrido < limiteTempo) continue;
 
-          tentativasRealizadas++;
-          console.log(`🔁 Tentando enviar registro ID ${registro.id} (${registro.type})`);
+        tentativasRealizadas++;
+        console.log(`🔁 Tentando enviar registro ID ${registro.id} (${registro.type})`);
 
-          try {
-            if (!fs.existsSync(registro.imagemPath)) {
-              console.warn(`⚠️ Imagem não encontrada para ID ${registro.id}: ${registro.imagemPath}`);
-              marcarComoErroDefinitivo(registro.id, 'Imagem não encontrada localmente');
-              continue;
-            }
+        try {
+          if (!fs.existsSync(registro.imagemPath)) {
+            console.warn(`⚠️ Imagem não encontrada para ID ${registro.id}: ${registro.imagemPath}`);
+            marcarComoErroDefinitivo(registro.id, 'Imagem não encontrada localmente');
+            continue;
+          }
 
-            const form = new FormData();
-            form.append('cpf', registro.cpf);
-            form.append('latitude', registro.latitude);
-            form.append('longitude', registro.longitude);
-            form.append('deviceIdentifier', registro.deviceIdentifier);
-            form.append('imagem', fs.createReadStream(registro.imagemPath));
-            form.append('received', registro.created_at);
-            form.append('type', registro.type);
+          const form = new FormData();
+          form.append('cpf', registro.cpf);
+          form.append('latitude', registro.latitude);
+          form.append('longitude', registro.longitude);
+          form.append('deviceIdentifier', registro.deviceIdentifier);
+          form.append('imagem', fs.createReadStream(registro.imagemPath));
+          form.append('received', registro.created_at);
+          form.append('type', registro.type);
 
-            const response = await axios.post(API_PREFEITURA, form, {
-              headers: form.getHeaders()
-            });
+          const response = await axios.post(API_PREFEITURA, form, {
+            headers: form.getHeaders()
+          });
 
-            if (response.status >= 200 && response.status < 300) {
-              db.run('UPDATE registros SET enviado = 1 WHERE id = ?', [registro.id]);
-              console.log(`✅ Registro ID ${registro.id} enviado com sucesso.`);
-            } else {
-              const mensagem = response.data?.message || response.statusText;
-              console.error(`❌ Falha no envio do registro ID ${registro.id}. Status: ${response.status} - ${mensagem}`);
-              tratarErroEnvio(registro.id, tentativas, response.status, mensagem);
-            }
+          if (response.status >= 200 && response.status < 300) {
+            db.run('UPDATE registros SET enviado = 1 WHERE id = ?', [registro.id]);
+            console.log(`✅ Registro ID ${registro.id} enviado com sucesso.`);
+          } else {
+            const mensagem = response.data?.message || response.statusText;
+            tratarErroEnvio(registro.id, tentativas, response.status, mensagem);
+          }
 
-          } catch (e) {
-            const status = e.response?.status;
-            const mensagem = e.response?.data?.message || e.response?.statusText || e.message;
+        } catch (e) {
+          const status = e.response?.status;
+          const mensagem = e.response?.data?.message || e.response?.statusText || e.message;
 
-            if (e.response) {
-              console.error(`❌ Erro ao enviar ID ${registro.id}: ${mensagem} (status: ${status})`);
-              tratarErroEnvio(registro.id, tentativas, status, mensagem);
-            } else {
-              console.warn(`🌐 Backend indisponível ao enviar ID ${registro.id}: ${e.message}`);
-            }
+          if (e.response) {
+            console.error(`❌ Erro ao enviar ID ${registro.id}: ${mensagem} (status: ${status})`);
+            tratarErroEnvio(registro.id, tentativas, status, mensagem);
+          } else {
+            console.warn(`🌐 Backend indisponível ao enviar ID ${registro.id}: ${e.message}`);
           }
         }
-
-        resolve(tentativasRealizadas);
       }
-    );
+
+      resolve(tentativasRealizadas);
+    });
   });
 }
 
@@ -100,10 +99,10 @@ export async function enviarRegistrosPorIntervalo(dataInicio, dataFim, incluirEr
 
   const query = `
     SELECT * FROM registros 
-     WHERE enviado = 0 
-       ${incluirErros ? '' : 'AND erro_definitivo = 0'}
-       AND created_at BETWEEN ? AND ?
-     ORDER BY created_at ASC, type ASC`;
+    WHERE enviado = 0 
+    ${incluirErros ? '' : 'AND erro_definitivo = 0'}
+    AND created_at BETWEEN ? AND ?
+    ORDER BY created_at ASC, type ASC`;
 
   db.all(query, [inicioISO, fimISO], async (err, registros) => {
     if (err) {
@@ -144,7 +143,6 @@ export async function enviarRegistrosPorIntervalo(dataInicio, dataFim, incluirEr
           console.log(`✅ Registro ID ${registro.id} reenviado com sucesso.`);
         } else {
           const mensagem = response.data?.message || response.statusText;
-          console.error(`❌ Falha no envio ID ${registro.id}: ${mensagem}`);
           tratarErroEnvio(registro.id, registro.tentativas ?? 0, response.status, mensagem);
         }
 
@@ -166,10 +164,9 @@ export async function enviarRegistrosPorIntervalo(dataInicio, dataFim, incluirEr
 function tratarErroEnvio(id, tentativas, status, mensagem) {
   const agora = new Date().toISOString();
   const ERROS_PERMANENTES = [403, 404, 409];
-  let erroDefinitivo = 0;
+  const erroDefinitivo = ERROS_PERMANENTES.includes(status) || tentativas + 1 >= 5 ? 1 : 0;
 
-  if (ERROS_PERMANENTES.includes(status) || tentativas + 1 >= 5) {
-    erroDefinitivo = 1;
+  if (erroDefinitivo) {
     console.warn(`🚫 Erro definitivo para ID ${id} (status: ${status}): ${mensagem}`);
   }
 

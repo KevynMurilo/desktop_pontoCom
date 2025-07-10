@@ -1,12 +1,64 @@
 {
-  "name": "electron-app",
+  "name": "ponto-eletronico",
   "version": "1.0.0",
   "main": "main.js",
   "scripts": {
-    "start": "electron ."
+    "start": "electron .",
+    "build": "npm run install-backend && electron-builder",
+    "install-backend": "cd ../backend && npm install"
+  },
+  "build": {
+    "appId": "br.gov.pontoeletronico",
+    "productName": "Ponto Eletrônico",
+    "directories": {
+      "output": "dist-app",
+      "buildResources": "assets"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "assets/**/*",
+      {
+        "from": "../backend",
+        "to": "backend",
+        "filter": [
+          "**/*",
+          "!src/database/**/*",
+          "!uploads/**/*",
+          "!logs/**/*"
+        ]
+      },
+      {
+        "from": "../backend/node_modules",
+        "to": "backend/node_modules"
+      },
+      {
+        "from": "../frontend/dist",
+        "to": "frontend/dist"
+      }
+    ],
+    "extraResources": [
+      {
+        "from": "../backend/logs",
+        "to": "backend/logs"
+      }
+    ],
+    "asar": false,
+    "win": {
+      "target": "nsis",
+      "icon": "assets/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Ponto Eletrônico"
+    }
   },
   "devDependencies": {
-    "electron": "^36.5.0"
+    "electron": "^36.5.0",
+    "electron-builder": "^24.6.0"
   },
   "dependencies": {
     "get-port": "^7.1.0",

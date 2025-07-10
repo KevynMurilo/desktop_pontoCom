@@ -16,22 +16,33 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 
-// ✅ Usa porta recebida como argumento do Electron (ou 8080 como fallback)
-const PORT = process.argv[2] || 8080;
+// ✅ Porta dinâmica via Electron ou fallback local
+const PORT = process.env.APP_PORT || process.argv[2] || 8080;
+
+// ✅ Caminho de uploads (em %APPDATA% ou local)
+const uploadDir = process.env.APP_UPLOADS_DIR || path.join(__dirname, 'uploads');
+
+if (!fs.existsSync(uploadDir)) {
+  try {
+    fs.mkdirSync(uploadDir, { recursive: true });
+    console.log(`📁 Pasta de uploads criada: ${uploadDir}`);
+  } catch (err) {
+    console.error(`❌ Erro ao criar diretório de uploads: ${uploadDir}`, err);
+    process.exit(1);
+  }
+}
+
+// ✅ Configura multer para armazenar em memória
+const storage = multer.memoryStorage();
+const upload = multer({ storage });
 
 app.use(cors());
 app.use(express.json());
 
-const uploadDir = path.join(__dirname, 'uploads');
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir);
-}
-
-const storage = multer.memoryStorage();
-const upload = multer({ storage });
-
 app.get('/api/status', (_, res) => res.send('OK'));
+app.get('/api/health', (_, res) => res.send('OK'));
 
+// ✅ Registro de ponto
 app.post('/api/timerecord', upload.single('imagem'), async (req, res) => {
   try {
     const { cpf, deviceIdentifier } = req.body;
@@ -60,7 +71,7 @@ app.post('/api/timerecord', upload.single('imagem'), async (req, res) => {
       [cpf, caminhoImagem, latitude, longitude, deviceIdentifier, type, agoraBrasiliaISO],
       function (err) {
         if (err) {
-          console.error('Erro ao salvar no banco:', err.message);
+          console.error('❌ Erro ao salvar no banco:', err.message);
           return res.status(500).json({ message: 'Erro ao salvar localmente' });
         }
         res.json({ message: 'Registro salvo localmente', id: this.lastID, type });
@@ -72,6 +83,7 @@ app.post('/api/timerecord', upload.single('imagem'), async (req, res) => {
   }
 });
 
+// ✅ Forçar sincronização manual
 app.post('/api/forcar-sincronizacao', async (req, res) => {
   try {
     await enviarRegistrosPendentes();
@@ -82,6 +94,7 @@ app.post('/api/forcar-sincronizacao', async (req, res) => {
   }
 });
 
+// ✅ Sincronização por intervalo
 app.post('/api/forcar-sincronizacao-por-data', async (req, res) => {
   const { dataInicio, dataFim, incluirErros } = req.body;
 
@@ -100,6 +113,7 @@ app.post('/api/forcar-sincronizacao-por-data', async (req, res) => {
   }
 });
 
+// ✅ Aviso de registros pendentes com mais de 6h
 app.get('/api/registros-pendentes/aviso', (req, res) => {
   const seisHorasAtras = new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString();
 
@@ -109,7 +123,7 @@ app.get('/api/registros-pendentes/aviso', (req, res) => {
     [seisHorasAtras],
     (err, row) => {
       if (err) {
-        console.error('Erro ao buscar pendentes antigos:', err.message);
+        console.error('❌ Erro ao buscar pendentes antigos:', err.message);
         return res.status(500).json({ message: 'Erro interno' });
       }
       res.json({ total: row.total });

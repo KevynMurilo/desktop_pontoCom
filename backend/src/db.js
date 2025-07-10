@@ -1,11 +1,20 @@
 import sqlite3 from 'sqlite3';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const dbPath = path.join(__dirname, 'registros.db');
+// Usa APP_DB_PATH (definido no main.js) ou fallback local
+const dbPath = process.env.APP_DB_PATH || path.join(__dirname, 'registros.db');
+
+// Garante que a pasta do banco existe
+const dbDir = path.dirname(dbPath);
+if (!fs.existsSync(dbDir)) {
+  fs.mkdirSync(dbDir, { recursive: true });
+  console.log(`📁 Pasta do banco criada: ${dbDir}`);
+}
 
 const db = new sqlite3.Database(dbPath, (err) => {
   if (err) {
@@ -24,7 +33,7 @@ db.serialize(() => {
       latitude REAL,
       longitude REAL,
       deviceIdentifier TEXT,
-      type TEXT, -- <== NOVO CAMPO
+      type TEXT,
       enviado INTEGER DEFAULT 0,
       tentativas INTEGER DEFAULT 0,
       ultima_tentativa TEXT,
@@ -34,6 +43,5 @@ db.serialize(() => {
     )
   `);
 });
-
 
 export default db;

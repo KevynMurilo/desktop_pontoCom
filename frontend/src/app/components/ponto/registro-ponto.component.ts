@@ -60,7 +60,7 @@ export class RegistroPontoComponent {
   dispositivosVideo: MediaDeviceInfo[] = [];
   dispositivoSelecionadoId: string | null = null;
 
-  avisosPendentes = signal<number>(3);
+  avisosPendentes = signal<number>(0);
   mostrarAvisoPendentes = signal(true);
 
   constructor() {
@@ -135,7 +135,10 @@ export class RegistroPontoComponent {
 
   solicitarPermissaoECapturar() {
     this.videoElement = document.getElementById('video') as HTMLVideoElement;
-    if (!this.videoElement) return;
+    if (!this.videoElement) {
+      setTimeout(() => this.solicitarPermissaoECapturar(), 100);
+      return;
+    }
 
     this.pararStreamAtual();
     this.carregandoCamera.set(true);
@@ -174,17 +177,28 @@ export class RegistroPontoComponent {
       this.imagemCapturada = canvas.toDataURL('image/jpeg');
       this.fotoTirada.set(true);
 
-      this.videoElement.srcObject = null;
-      this.stream.getTracks().forEach(track => track.stop());
+      this.pararStreamAtual();
+
       setTimeout(() => this.mostrarFlash.set(false), 150);
     }, 250);
   }
 
   repetirFoto() {
-    this.imagemCapturada = null;
+    this.reiniciarCamera();
+  }
+
+  reiniciarCamera() {
     this.fotoTirada.set(false);
+    this.imagemCapturada = null;
     this.carregandoCamera.set(true);
-    this.solicitarPermissaoECapturar();
+    setTimeout(() => {
+      const video = document.getElementById('video');
+      if (video) {
+        this.iniciarVideoComPermissao();
+      } else {
+        setTimeout(() => this.reiniciarCamera(), 100);
+      }
+    }, 100);
   }
 
   registrarPonto = async () => {
@@ -205,7 +219,7 @@ export class RegistroPontoComponent {
         setTimeout(() => this.mensagemSucesso.set(null), 3000);
 
         this.form.reset();
-        setTimeout(() => this.repetirFoto(), 0);
+        this.reiniciarCamera();
       },
       error: err => {
         this.mensagemErro.set(err?.error?.message || '❌ Erro ao registrar ponto.');
@@ -254,7 +268,6 @@ export class RegistroPontoComponent {
       this.stream.getTracks().forEach(track => track.stop());
       this.stream = null!;
     }
-
     if (this.videoElement) {
       this.videoElement.pause();
       this.videoElement.srcObject = null;
