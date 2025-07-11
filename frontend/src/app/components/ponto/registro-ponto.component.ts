@@ -13,11 +13,11 @@ import {
   ReactiveFormsModule,
   Validators
 } from '@angular/forms';
-import { RegistroPontoService } from './registro-ponto.service';
+import { RegistroPontoService } from '../../core/service/registro-ponto.service';
 import { NgxMaskDirective, provideNgxMask } from 'ngx-mask';
 import { ConfiguracoesComponent } from '../configuracoes/configuracoes.component';
 import { interval } from 'rxjs';
-import { cpfValidator } from '../../validators/cpf.validator';
+import { cpfValidator } from '../../core/validators/cpf.validator';
 
 @Component({
   selector: 'app-registro-ponto',
@@ -41,6 +41,7 @@ export class RegistroPontoComponent {
     cpf: ['', [Validators.required, cpfValidator]]
   });
 
+
   carregandoCamera = signal(true);
   mostrarFlash = signal(false);
   fotoTirada = signal(false);
@@ -60,8 +61,14 @@ export class RegistroPontoComponent {
   dispositivosVideo: MediaDeviceInfo[] = [];
   dispositivoSelecionadoId: string | null = null;
 
-  avisosPendentes = signal<number>(0);
+  avisosPendentes = signal<number>(3);
   mostrarAvisoPendentes = signal(true);
+
+  vinculoDispositivo = signal<{
+    municipioNome: string | null;
+    secretariaNome: string | null;
+    setorNome: string | null;
+  } | null>(null);
 
   constructor() {
     document.documentElement.classList.toggle('dark', this.modoEscuro());
@@ -69,6 +76,19 @@ export class RegistroPontoComponent {
 
   async ngAfterViewInit() {
     this.deviceIdentifier = (window as any).device?.getId?.() || 'desconhecido';
+
+    this.service.verificarDispositivo(this.deviceIdentifier).subscribe(info => {
+      if (info) {
+        this.vinculoDispositivo.set({
+          municipioNome: info.municipalityName,
+          secretariaNome: info.departmentName,
+          setorNome: info.sectorName
+        });
+      } else {
+        this.vinculoDispositivo.set(null);
+      }
+    });
+
     await this.listarDispositivos();
 
     const salvo = localStorage.getItem('cameraSelecionada');

@@ -2,16 +2,12 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, from, of } from 'rxjs';
 import { catchError, map, switchMap } from 'rxjs/operators';
-
-export interface RegistroPontoDTO {
-  cpf: string;
-  imagem: File;
-  deviceIdentifier: string;
-}
+import { RegistroPontoDTO } from '../model/registro.model';
+import { DeviceResponseDTO } from '../model/device.model';
 
 @Injectable()
 export class RegistroPontoService {
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient) { }
 
   private getBaseUrl$(): Observable<string> {
     return from(window.backendApi.getApiBaseUrl());
@@ -58,5 +54,20 @@ export class RegistroPontoService {
         )
       )
     );
+  }
+
+  verificarDispositivo(identifier: string): Observable<DeviceResponseDTO | null> {
+    return this.getBaseUrl$().pipe(
+      switchMap(baseUrl =>
+        this.http.get<{ existe: boolean; device: DeviceResponseDTO }>(`${baseUrl}/device/verificar/${identifier}`).pipe(
+          map(res => res.existe ? res.device : null),
+          catchError(() => of(null))
+        )
+      )
+    );
+  }
+
+  verificarVinculoDispositivo(identifier: string): Observable<DeviceResponseDTO | null> {
+    return this.verificarDispositivo(identifier);
   }
 }

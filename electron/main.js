@@ -8,6 +8,8 @@ const getPort = require('get-port').default;
 
 process.env.LANG = 'pt_BR.UTF-8';
 
+const isDev = true;
+
 const deviceId = machineIdSync(true);
 console.log('🆔 ID gerado com sucesso:', deviceId);
 
@@ -47,8 +49,12 @@ function createWindow() {
     }
   });
 
-  const indexPath = path.join(__dirname, 'frontend/dist/ponto-eletronico/browser/index.html');
+  const indexPath = isDev
+    ? path.join(__dirname, '../frontend/dist/ponto-eletronico/browser/index.html')
+    : path.join(__dirname, 'frontend/dist/ponto-eletronico/browser/index.html');
+
   const fileUrl = pathToFileURL(indexPath).toString();
+
   win.loadURL(decodeURIComponent(fileUrl)).catch(err => {
     console.error('❌ Erro ao carregar index.html:', err.stack || err);
   });
@@ -62,7 +68,10 @@ async function startBackend() {
 
   try {
     dynamicPort = await getPort();
-    const backendDir = path.join(__dirname, 'backend');
+
+    const backendDir = isDev
+      ? path.join(__dirname, '../backend')
+      : path.join(__dirname, 'backend');
 
     const appDataDir = getAppDataPath();
     const uploadsDir = path.join(appDataDir, 'uploads');

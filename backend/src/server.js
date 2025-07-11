@@ -4,6 +4,8 @@ import multer from 'multer';
 import fs from 'fs';
 import path from 'path';
 import sharp from 'sharp';
+import axios from 'axios';
+
 import { fileURLToPath } from 'url';
 
 import db from './db.js';
@@ -13,6 +15,7 @@ import { definirTipoParaHoje } from './definirTipoParaHoje.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+const SPRING_API_BASE_URL = 'http://localhost:8082/api';
 
 const app = express();
 
@@ -113,7 +116,6 @@ app.post('/api/forcar-sincronizacao-por-data', async (req, res) => {
   }
 });
 
-// ✅ Aviso de registros pendentes com mais de 6h
 app.get('/api/registros-pendentes/aviso', (req, res) => {
   const seisHorasAtras = new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString();
 
@@ -129,6 +131,31 @@ app.get('/api/registros-pendentes/aviso', (req, res) => {
       res.json({ total: row.total });
     }
   );
+});
+
+app.get('/api/device/verificar/:identifier', async (req, res) => {
+  const { identifier } = req.params;
+
+  try {
+    console.log(identifier);
+    const response = await axios.get(`${SPRING_API_BASE_URL}/device/identifier/${identifier}/vinculo`);
+    console.log(response.data);
+    if (response.data?.success) {
+      res.json({
+        existe: true,
+        device: response.data.data,
+      });
+    } else {
+      res.status(404).json({ existe: false, message: 'Dispositivo não encontrado no servidor remoto.' });
+    }
+  } catch (err) {
+    if (err.response?.status === 404) {
+      return res.status(404).json({ existe: false, message: 'Dispositivo não encontrado.' });
+    }
+
+    console.error('❌ Erro ao verificar dispositivo remoto:', err);
+    res.status(500).json({ message: 'Erro ao conectar com o servidor remoto.' });
+  }
 });
 
 app.listen(PORT, () => {
