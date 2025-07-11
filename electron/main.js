@@ -8,7 +8,7 @@ const getPort = require('get-port').default;
 
 process.env.LANG = 'pt_BR.UTF-8';
 
-const isDev = true;
+const isDev = false;
 
 const deviceId = machineIdSync(true);
 console.log('🆔 ID gerado com sucesso:', deviceId);

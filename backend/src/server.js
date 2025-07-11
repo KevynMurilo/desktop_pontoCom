@@ -15,7 +15,7 @@ import { definirTipoParaHoje } from './definirTipoParaHoje.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const SPRING_API_BASE_URL = 'http://localhost:8082/api';
+const SPRING_API_BASE_URL = 'https://webhook-formosago.app.br/pontocom/api';
 
 const app = express();
 
