@@ -1,7 +1,8 @@
+<!-- Melhorias completas de UI/UX mantendo toda a lógica e funcionalidades existentes -->
 <div class="min-h-screen flex items-center justify-center px-4 py-8 relative"
      [class.bg-gray-100]="!modoEscuro()" [class.bg-gray-900]="modoEscuro()">
 
-  <!-- ✅ Efeito de Flash Branco -->
+  <!-- Flash branco ao tirar foto -->
   <div *ngIf="mostrarFlash()" class="fixed inset-0 bg-white z-50 flash-animation pointer-events-none"></div>
   <style>
     .flash-animation {
@@ -11,7 +12,7 @@
     }
   </style>
 
-  <!-- ✅ Toasts fixos -->
+  <!-- Toasts -->
   <div class="fixed top-4 right-4 z-[999] space-y-2">
     <div *ngIf="mensagemSucesso()" class="bg-green-600 text-white px-5 py-3 rounded-lg shadow-lg animate-fade-in">
       ✅ {{ mensagemSucesso() }}
@@ -21,24 +22,24 @@
     </div>
   </div>
 
-  <!-- ⚙️ Botões flutuantes -->
+  <!-- Botões flutuantes -->
   <div class="absolute top-4 right-4 flex gap-2 z-40">
-    <button (click)="alternarTema()" class="p-2 rounded-full shadow cursor-pointer"
+    <button (click)="alternarTema()" class="p-2 rounded-full shadow cursor-pointer transition-colors"
             [class.bg-white]="!modoEscuro()" [class.bg-gray-800]="modoEscuro()">
       <span *ngIf="modoEscuro()">☀️</span>
       <span *ngIf="!modoEscuro()">🌙</span>
     </button>
-    <button (click)="mostrarConfiguracoes.set(true)" class="p-2 rounded-full shadow"
+    <button (click)="mostrarConfiguracoes.set(true)" class="p-2 rounded-full shadow cursor-pointer transition-colors"
             [class.bg-white]="!modoEscuro()" [class.bg-gray-800]="modoEscuro()">
-      <img [src]="modoEscuro() ? 'assets/icon-configuration-white.svg' : 'assets/icon-configuration-black.svg'" alt="Configurações" class="w-6 h-6 cursor-pointer" />
+      <img [src]="modoEscuro() ? 'assets/icon-configuration-white.svg' : 'assets/icon-configuration-black.svg'" alt="Configurações" class="w-6 h-6" />
     </button>
   </div>
 
-  <!-- 🧾 Cartão principal -->
-  <div class="w-full max-w-xl p-6 rounded-2xl shadow-2xl space-y-6"
+  <!-- Cartão principal -->
+  <div class="w-full max-w-2xl p-6 sm:p-8 rounded-3xl shadow-xl space-y-6 transition-all duration-300"
        [class.bg-white]="!modoEscuro()" [class.bg-gray-800]="modoEscuro()">
 
-    <!-- 🧠 Cabeçalho -->
+    <!-- Cabeçalho -->
     <div class="flex items-center justify-between">
       <h1 class="text-2xl font-bold flex items-center gap-2"
           [class.text-gray-800]="!modoEscuro()" [class.text-gray-100]="modoEscuro()">
@@ -55,17 +56,29 @@
       </span>
     </div>
 
-    <!-- ⚠️ Alertas: Pendência + Vínculo -->
-    <div class="space-y-4">
+    <!-- Botão de Atualizar -->
+    <div class="flex justify-end">
+      <button (click)="atualizarVinculo()" [disabled]="carregandoVinculo()"
+              class="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-full shadow border transition-all cursor-pointer"
+              [class.bg-white]="!modoEscuro()" [class.text-gray-700]="!modoEscuro()" [class.border-gray-300]="!modoEscuro()"
+              [class.bg-gray-700]="modoEscuro()" [class.text-gray-100]="modoEscuro()" [class.border-gray-500]="modoEscuro()">
+        🔄 Atualizar
+        <svg *ngIf="carregandoVinculo()" class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+        </svg>
+      </button>
+    </div>
 
-      <!-- 🔌 Dispositivo -->
+    <!-- Avisos -->
+    <div class="space-y-4">
       <ng-container *ngIf="vinculoDispositivo(); else naoVinculado">
-        <div class="rounded-md p-4 border-l-4 shadow"
+        <div class="rounded-lg p-4 border-l-4 shadow"
              [class.bg-green-50]="!modoEscuro()" [class.border-green-600]="!modoEscuro()"
              [class.bg-green-900]="modoEscuro()" [class.border-green-400]="modoEscuro()"
              [class.text-gray-800]="!modoEscuro()" [class.text-gray-100]="modoEscuro()">
           <div class="font-semibold">✅ Dispositivo vinculado</div>
-          <div class="text-sm">
+          <div class="text-sm mt-1 space-y-1">
             <div>Município: <strong>{{ vinculoDispositivo()?.municipioNome }}</strong></div>
             <div>Secretaria: <strong>{{ vinculoDispositivo()?.secretariaNome || '—' }}</strong></div>
             <div>Setor: <strong>{{ vinculoDispositivo()?.setorNome }}</strong></div>
@@ -74,16 +87,15 @@
       </ng-container>
 
       <ng-template #naoVinculado>
-        <div class="rounded-md p-4 border-l-4 shadow flex items-center gap-2"
+        <div class="rounded-lg p-4 border-l-4 shadow flex items-center gap-2"
              [class.bg-red-100]="!modoEscuro()" [class.text-red-800]="!modoEscuro()" [class.border-red-600]="!modoEscuro()"
              [class.bg-red-900]="modoEscuro()" [class.text-red-100]="modoEscuro()" [class.border-red-400]="modoEscuro()">
           🚫 Este dispositivo não está vinculado. Contate o administrador.
         </div>
       </ng-template>
 
-      <!-- 🕑 Pendência -->
       <div *ngIf="avisosPendentes() > 0 && mostrarAvisoPendentes()"
-           class="rounded-md p-4 border shadow flex justify-between items-center text-sm"
+           class="rounded-lg p-4 border shadow flex justify-between items-center text-sm"
            [class.bg-yellow-100]="!modoEscuro()" [class.text-yellow-900]="!modoEscuro()" [class.border-yellow-400]="!modoEscuro()"
            [class.bg-yellow-900]="modoEscuro()" [class.text-yellow-200]="modoEscuro()" [class.border-yellow-600]="modoEscuro()">
         ⚠️ {{ avisosPendentes() }} registro{{ avisosPendentes() > 1 ? 's' : '' }} pendente{{ avisosPendentes() > 1 ? 's' : '' }} há mais de 6 horas.
@@ -91,19 +103,18 @@
       </div>
     </div>
 
-    <!-- 👤 Formulário de CPF -->
+    <!-- Formulário -->
     <form [formGroup]="form" (ngSubmit)="registrarPonto()" class="space-y-4">
       <div>
         <label class="block text-sm font-medium mb-1"
                [class.text-gray-700]="!modoEscuro()" [class.text-gray-200]="modoEscuro()">CPF</label>
         <input #cpfInput formControlName="cpf" placeholder="000.000.000-00" mask="000.000.000-00" [dropSpecialCharacters]="true"
-               class="w-full px-4 py-2 border rounded-lg text-sm shadow-sm focus:outline-none focus:ring-2"
+               class="w-full px-4 py-2 border rounded-lg text-sm shadow-sm focus:outline-none focus:ring-2 transition-all"
                [class.border-gray-300]="!modoEscuro()" [class.bg-white]="!modoEscuro()" [class.text-gray-800]="!modoEscuro()"
                [class.border-gray-600]="modoEscuro()" [class.bg-gray-700]="modoEscuro()" [class.text-gray-100]="modoEscuro()" />
         <small *ngIf="form.get('cpf')?.invalid && form.get('cpf')?.touched" class="text-red-600 mt-1 block">CPF inválido.</small>
       </div>
 
-      <!-- 📸 Câmera ou imagem -->
       <div class="relative min-h-80 border-2 border-dashed rounded-lg overflow-hidden"
            [class.border-gray-300]="!modoEscuro()" [class.border-gray-600]="modoEscuro()" style="background-color: black;">
         <div *ngIf="carregandoCamera() && !fotoCapturada()" class="absolute inset-0 z-10 flex items-center justify-center bg-black bg-opacity-80">
@@ -117,18 +128,18 @@
         <div class="absolute inset-0 pointer-events-none border-4 border-blue-400 opacity-10 z-20 rounded"></div>
       </div>
 
-      <!-- 🔘 Ações -->
+      <!-- Ações -->
       <div class="flex flex-col sm:flex-row gap-3 pt-2">
         <button type="button" (click)="tirarFoto()" *ngIf="!fotoCapturada()"
-          class="w-full sm:w-1/2 px-4 py-2 bg-blue-100 hover:bg-blue-200 text-blue-800 font-semibold rounded-lg shadow cursor-pointer">
+                class="w-full sm:w-1/2 px-4 py-2 bg-blue-100 hover:bg-blue-200 text-blue-800 font-semibold rounded-lg shadow cursor-pointer">
           📸 Tirar Foto
         </button>
         <button type="button" (click)="repetirFoto()" *ngIf="fotoCapturada()"
-          class="w-full sm:w-1/2 px-4 py-2 bg-yellow-100 hover:bg-yellow-200 text-yellow-800 font-semibold rounded-lg shadow cursor-pointer">
+                class="w-full sm:w-1/2 px-4 py-2 bg-yellow-100 hover:bg-yellow-200 text-yellow-800 font-semibold rounded-lg shadow cursor-pointer">
           🔁 Repetir
         </button>
         <button type="submit" [disabled]="form.invalid || !fotoCapturada()"
-          class="w-full sm:w-1/2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow disabled:opacity-50 cursor-pointer">
+                class="w-full sm:w-1/2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow disabled:opacity-50 cursor-pointer">
           🕒 Registrar
         </button>
       </div>
@@ -136,7 +147,7 @@
   </div>
 </div>
 
-<!-- ⚙️ Modal -->
+<!-- Modal de Configurações -->
 <app-configuracoes *ngIf="mostrarConfiguracoes()" [deviceIdentifier]="deviceIdentifier"
   [dispositivosVideo]="dispositivosVideo" [dispositivoSelecionadoId]="dispositivoSelecionadoId"
   [modoEscuro]="modoEscuro()" (selecionarDispositivo)="onSelecionarDispositivo($event)"

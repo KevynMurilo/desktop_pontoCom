@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain } = require('electron');
+const { app, BrowserWindow, ipcMain, Menu } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');
@@ -40,13 +40,24 @@ function createWindow() {
   const win = new BrowserWindow({
     width: 1280,
     height: 800,
+    minWidth: 1280,
+    minHeight: 800,
+    show: false, // ⬅️ Inicialmente invisível
     icon: path.join(__dirname, 'assets/icon.png'),
     title: 'Ponto Eletrônico',
+    autoHideMenuBar: true,
     webPreferences: {
       contextIsolation: true,
       preload: path.join(__dirname, 'preload.js'),
       additionalArguments: [`--device-id=${deviceId}`]
     }
+  });
+
+  Menu.setApplicationMenu(null); // remove menu nativo
+
+  win.once('ready-to-show', () => {
+    win.maximize(); // ⬅️ Maximiza antes de mostrar
+    win.show();     // ⬅️ Só mostra depois de carregado
   });
 
   const indexPath = isDev

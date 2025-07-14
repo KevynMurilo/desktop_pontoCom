@@ -5,6 +5,8 @@ import { ElementRef } from '@angular/core';
 import { interval } from 'rxjs';
 
 export class RegistroPontoHandlers {
+  private pollingVinculoInterval: any = null;
+
   constructor(
     private vm: RegistroPontoViewModel,
     private service: RegistroPontoService,
@@ -14,13 +16,7 @@ export class RegistroPontoHandlers {
   async inicializar(cpfInputRef: ElementRef<HTMLInputElement>) {
     this.vm.deviceIdentifier = (window as any).device?.getId?.() || 'desconhecido';
 
-    this.service.verificarDispositivo(this.vm.deviceIdentifier).subscribe(info => {
-      this.vm.vinculoDispositivo.set(info ? {
-        municipioNome: info.municipalityName,
-        secretariaNome: info.departmentName,
-        setorNome: info.sectorName
-      } : null);
-    });
+    this.verificarVinculoDispositivo();
 
     await this.camera.listarDispositivos();
 
@@ -37,6 +33,34 @@ export class RegistroPontoHandlers {
 
     interval(10000).subscribe(() => this.verificarStatus());
     interval(30000).subscribe(() => this.verificarAvisosPendentes());
+
+    this.pollingVinculoInterval = setInterval(() => {
+      if (!this.vm.vinculoDispositivo()) {
+        this.verificarVinculoDispositivo();
+      }
+    }, 60000);
+  }
+
+  verificarVinculoDispositivo() {
+    this.vm.carregandoVinculo.set(true);
+
+    this.service.verificarDispositivo(this.vm.deviceIdentifier).subscribe(info => {
+      const vinculo = info ? {
+        municipioNome: info.municipalityName,
+        secretariaNome: info.departmentName,
+        setorNome: info.sectorName
+      } : null;
+
+      this.vm.vinculoDispositivo.set(vinculo);
+      this.vm.carregandoVinculo.set(false);
+
+      if (vinculo && this.pollingVinculoInterval) {
+        clearInterval(this.pollingVinculoInterval);
+        this.pollingVinculoInterval = null;
+      }
+    }, () => {
+      this.vm.carregandoVinculo.set(false);
+    });
   }
 
   verificarStatus() {

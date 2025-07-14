@@ -33,6 +33,8 @@ export class RegistroPontoViewModel {
     setorNome: string | null;
   } | null>(null);
 
+  carregandoVinculo = signal(false);
+
   constructor(private fb: FormBuilder) {
     this.form = this.fb.group({
       cpf: ['', [Validators.required, cpfValidator]]

@@ -36,6 +36,13 @@ export class RegistroPontoComponent {
   camera = new RegistroPontoCamera(this.vm);
   handlers = new RegistroPontoHandlers(this.vm, this.service, this.camera);
 
+
+  get carregandoVinculo() { return this.vm.carregandoVinculo; }
+
+  atualizarVinculo() {
+    this.handlers.verificarVinculoDispositivo();
+  }
+
   async ngAfterViewInit() {
     await this.handlers.inicializar(this.cpfInputRef);
   }
