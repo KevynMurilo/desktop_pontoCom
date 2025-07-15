@@ -33,7 +33,6 @@ db.serialize(() => {
       latitude REAL,
       longitude REAL,
       deviceIdentifier TEXT,
-      type TEXT,
       enviado INTEGER DEFAULT 0,
       tentativas INTEGER DEFAULT 0,
       ultima_tentativa TEXT,

@@ -11,7 +11,6 @@ import { fileURLToPath } from 'url';
 import db from './db.js';
 import { enviarRegistrosPendentes, enviarRegistrosPorIntervalo } from './sync.service.js';
 import { getLocationByIP } from './geo.js';
-import { definirTipoParaHoje } from './definirTipoParaHoje.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -54,7 +53,6 @@ app.post('/api/timerecord', upload.single('imagem'), async (req, res) => {
       return res.status(400).json({ message: 'CPF e imagem são obrigatórios.' });
     }
 
-    const type = await definirTipoParaHoje(cpf);
     const { latitude, longitude } = await getLocationByIP();
 
     const nomeArquivo = `${Date.now()}_${Math.random().toString(36).substring(2, 10)}.webp`;
@@ -69,15 +67,15 @@ app.post('/api/timerecord', upload.single('imagem'), async (req, res) => {
     const agoraBrasiliaISO = new Date(agora.getTime() + offsetBrasiliaMs).toISOString().split('.')[0];
 
     db.run(
-      `INSERT INTO registros (cpf, imagemPath, latitude, longitude, deviceIdentifier, type, enviado, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, 0, ?)`,
-      [cpf, caminhoImagem, latitude, longitude, deviceIdentifier, type, agoraBrasiliaISO],
+      `INSERT INTO registros (cpf, imagemPath, latitude, longitude, deviceIdentifier, enviado, created_at)
+       VALUES (?, ?, ?, ?, ?, 0, ?)`,
+      [cpf, caminhoImagem, latitude, longitude, deviceIdentifier, agoraBrasiliaISO],
       function (err) {
         if (err) {
           console.error('❌ Erro ao salvar no banco:', err.message);
           return res.status(500).json({ message: 'Erro ao salvar localmente' });
         }
-        res.json({ message: 'Registro salvo localmente', id: this.lastID, type });
+        res.json({ message: 'Registro salvo localmente', id: this.lastID });
       }
     );
   } catch (err) {
@@ -116,6 +114,7 @@ app.post('/api/forcar-sincronizacao-por-data', async (req, res) => {
   }
 });
 
+// ✅ Aviso de pendência antiga
 app.get('/api/registros-pendentes/aviso', (req, res) => {
   const seisHorasAtras = new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString();
 
@@ -133,13 +132,12 @@ app.get('/api/registros-pendentes/aviso', (req, res) => {
   );
 });
 
+// ✅ Verificação de dispositivo
 app.get('/api/device/verificar/:identifier', async (req, res) => {
   const { identifier } = req.params;
 
   try {
-    console.log(identifier);
     const response = await axios.get(`${SPRING_API_BASE_URL}/device/identifier/${identifier}/vinculo`);
-    console.log(response.data);
     if (response.data?.success) {
       res.json({
         existe: true,

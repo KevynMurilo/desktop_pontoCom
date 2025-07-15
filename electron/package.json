@@ -62,6 +62,7 @@
   },
   "dependencies": {
     "get-port": "^7.1.0",
-    "node-machine-id": "^1.1.12"
+    "node-machine-id": "^1.1.12",
+    "unzipper": "^0.12.3"
   }
 }

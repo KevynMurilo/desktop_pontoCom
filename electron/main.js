@@ -1,14 +1,16 @@
 const { app, BrowserWindow, ipcMain, Menu } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const os = require('os');
+const https = require('https');
 const { spawn } = require('child_process');
 const { pathToFileURL } = require('url');
 const { machineIdSync } = require('node-machine-id');
+const unzipper = require('unzipper');
 const getPort = require('get-port').default;
 
 process.env.LANG = 'pt_BR.UTF-8';
-
-const isDev = false;
+const isDev = true;
 
 const deviceId = machineIdSync(true);
 console.log('🆔 ID gerado com sucesso:', deviceId);
@@ -36,13 +38,70 @@ function getAppDataPath() {
   }
 }
 
+async function findOrInstallNode() {
+  return new Promise((resolve, reject) => {
+    const tryNode = spawn('node', ['-v']);
+
+    tryNode.on('exit', code => {
+      if (code === 0) {
+        console.log('✔️ Node.js já está instalado');
+        resolve('node');
+      } else {
+        downloadPortableNode().then(resolve).catch(reject);
+      }
+    });
+
+    tryNode.on('error', () => {
+      downloadPortableNode().then(resolve).catch(reject);
+    });
+  });
+}
+
+function downloadPortableNode() {
+  return new Promise((resolve, reject) => {
+    const arch = os.arch() === 'x64' ? 'x64' : 'x86';
+    const nodeVersion = 'v20.11.1';
+    const filename = `node-${nodeVersion}-win-${arch}`;
+    const nodeUrl = `https://nodejs.org/dist/${nodeVersion}/${filename}.zip`;
+
+    const destFolder = path.join(getAppDataPath(), 'nodejs');
+    const zipPath = path.join(destFolder, 'node.zip');
+    const nodePath = path.join(destFolder, filename, 'node.exe');
+
+    if (fs.existsSync(nodePath)) {
+      console.log('✔️ Node.js portátil já existe');
+      resolve(nodePath);
+      return;
+    }
+
+    fs.mkdirSync(destFolder, { recursive: true });
+
+    console.log('⬇️ Baixando Node.js portátil...');
+    const file = fs.createWriteStream(zipPath);
+    https.get(nodeUrl, response => {
+      response.pipe(file);
+      file.on('finish', () => {
+        file.close(() => {
+          fs.createReadStream(zipPath)
+            .pipe(unzipper.Extract({ path: destFolder }))
+            .on('close', () => {
+              console.log('✅ Node.js portátil extraído');
+              resolve(nodePath);
+            })
+            .on('error', reject);
+        });
+      });
+    }).on('error', reject);
+  });
+}
+
 function createWindow() {
   const win = new BrowserWindow({
     width: 1280,
     height: 800,
-    minWidth: 1280,
-    minHeight: 800,
-    show: false, // ⬅️ Inicialmente invisível
+    minWidth: 1024,
+    minHeight: 700,
+    show: false,
     icon: path.join(__dirname, 'assets/icon.png'),
     title: 'Ponto Eletrônico',
     autoHideMenuBar: true,
@@ -53,11 +112,11 @@ function createWindow() {
     }
   });
 
-  Menu.setApplicationMenu(null); // remove menu nativo
+  Menu.setApplicationMenu(null);
 
   win.once('ready-to-show', () => {
-    win.maximize(); // ⬅️ Maximiza antes de mostrar
-    win.show();     // ⬅️ Só mostra depois de carregado
+    win.maximize();
+    win.show();
   });
 
   const indexPath = isDev
@@ -78,6 +137,7 @@ async function startBackend() {
   }
 
   try {
+    const nodePath = await findOrInstallNode();
     dynamicPort = await getPort();
 
     const backendDir = isDev
@@ -100,7 +160,7 @@ async function startBackend() {
     const serverLog = fs.openSync(path.join(logsDir, 'server.log'), 'a');
     const serverErr = fs.openSync(path.join(logsDir, 'server-error.log'), 'a');
 
-    serverProcess = spawn('node', ['src/server.js'], {
+    serverProcess = spawn(nodePath, ['src/server.js'], {
       cwd: backendDir,
       stdio: ['ignore', serverLog, serverErr],
       env: { ...process.env },
@@ -118,7 +178,7 @@ async function startBackend() {
     const syncLog = fs.openSync(path.join(logsDir, 'sync.log'), 'a');
     const syncErr = fs.openSync(path.join(logsDir, 'sync-error.log'), 'a');
 
-    syncProcess = spawn('node', ['src/sync.service.js'], {
+    syncProcess = spawn(nodePath, ['src/sync.service.js'], {
       cwd: backendDir,
       stdio: ['ignore', syncLog, syncErr],
       env: { ...process.env },
