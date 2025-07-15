@@ -88,6 +88,64 @@ export async function enviarRegistrosPendentes() {
   });
 }
 
+export async function enviarRegistrosPorIntervalo(dataInicio, dataFim, incluirErrosDefinitivos = false) {
+  return new Promise((resolve, reject) => {
+    const query = `
+      SELECT * FROM registros 
+      WHERE created_at BETWEEN ? AND ?
+      AND enviado = 0
+      ${incluirErrosDefinitivos ? '' : 'AND erro_definitivo = 0'}
+    `;
+
+    db.all(query, [dataInicio, dataFim], async (err, registros) => {
+      if (err) {
+        console.error('❌ Erro ao buscar registros por intervalo:', err);
+        return reject(err);
+      }
+
+      console.log(`📅 ${registros.length} registro(s) encontrado(s) entre ${dataInicio} e ${dataFim}`);
+
+      for (const r of registros) {
+        try {
+          if (!fs.existsSync(r.imagemPath)) {
+            console.warn(`⚠️ Imagem não encontrada: ${r.imagemPath}`);
+            marcarComoErroDefinitivo(r.id, 'Imagem não encontrada');
+            continue;
+          }
+
+          const form = new FormData();
+          form.append('cpf', r.cpf);
+          form.append('latitude', r.latitude);
+          form.append('longitude', r.longitude);
+          form.append('deviceIdentifier', r.deviceIdentifier);
+          form.append('imagem', fs.createReadStream(r.imagemPath));
+          form.append('received', r.created_at);
+
+          const response = await axios.post(API_PREFEITURA, form, {
+            headers: form.getHeaders(),
+          });
+
+          if (response.status >= 200 && response.status < 300) {
+            db.run('UPDATE registros SET enviado = 1 WHERE id = ?', [r.id]);
+            console.log(`✅ Registro ID ${r.id} enviado com sucesso.`);
+          } else {
+            const msg = response.data?.message || response.statusText;
+            tratarErroEnvio(r.id, r.tentativas ?? 0, response.status, msg);
+          }
+
+        } catch (err) {
+          const status = err.response?.status;
+          const msg = err.response?.data?.message || err.response?.statusText || err.message;
+          console.error(`❌ Erro ao enviar ID ${r.id}: ${msg}`);
+          tratarErroEnvio(r.id, r.tentativas ?? 0, status, msg);
+        }
+      }
+
+      resolve(registros.length);
+    });
+  });
+}
+
 function tratarErroEnvio(id, tentativas, status, mensagem) {
   const agora = new Date().toISOString();
   const ERROS_PERMANENTES = [403, 404, 409];

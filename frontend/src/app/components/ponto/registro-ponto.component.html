@@ -68,8 +68,8 @@
     <div class="space-y-2 text-sm">
       <ng-container *ngIf="vinculoDispositivo(); else naoVinculado">
         <div class="p-3 border-l-4 rounded shadow"
-             [class.bg-green-50]="!modoEscuro()" [class.border-green-600]="!modoEscuro()"
-             [class.bg-green-900]="modoEscuro()" [class.border-green-400]="modoEscuro()">
+             [class.bg-green-50]="!modoEscuro()" [class.border-green-600]="!modoEscuro()" [class.text-gray-800]="!modoEscuro()"
+             [class.bg-green-900]="modoEscuro()" [class.border-green-400]="modoEscuro()" [class.text-gray-100]="modoEscuro()">
           ✅ Dispositivo vinculado<br />
           <span>Município: <strong>{{ vinculoDispositivo()?.municipioNome }}</strong></span><br />
           <span>Setor: <strong>{{ vinculoDispositivo()?.setorNome }}</strong></span>
