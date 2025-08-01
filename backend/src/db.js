@@ -41,6 +41,71 @@ db.serialize(() => {
       created_at TEXT
     )
   `);
+
+  // Tabela de funcionários
+  db.run(`
+    CREATE TABLE IF NOT EXISTS funcionarios (
+      id TEXT PRIMARY KEY,
+      nome TEXT,
+      taxId TEXT,
+      pisPasep TEXT,
+      tipo TEXT,
+      ativo INTEGER,
+      deletedAt TEXT,
+      updatedAt TEXT,
+      setorId TEXT,
+      workDays TEXT
+    )
+  `);
+
+  // Tabela de feriados/calendário
+  db.run(`
+    CREATE TABLE IF NOT EXISTS calendario_municipal (
+      id TEXT PRIMARY KEY,
+      data TEXT,
+      tipo TEXT,
+      escopo TEXT,
+      descricao TEXT,
+      hora_inicio TEXT,
+      hora_fim TEXT,
+      deletedAt TEXT,
+      updatedAt TEXT
+    )
+  `);
+
+  // Tabela de férias
+  db.run(`
+    CREATE TABLE IF NOT EXISTS ferias (
+      id TEXT PRIMARY KEY,
+      funcionarioId TEXT,
+      data_inicio TEXT,
+      data_fim TEXT,
+      observacao TEXT,
+      deletedAt TEXT,
+      updatedAt TEXT
+    )
+  `);
+
+  // Tabela de períodos extras
+  db.run(`
+    CREATE TABLE IF NOT EXISTS periodos_extras (
+      id TEXT PRIMARY KEY,
+      descricao TEXT,
+      data_inicio TEXT,
+      data_fim TEXT,
+      escopo TEXT,
+      deletedAt TEXT,
+      updatedAt TEXT
+    )
+  `);
+
+  // Tabela de controle da última sincronização
+  db.run(`
+    CREATE TABLE IF NOT EXISTS sincronizacao (
+      municipioId TEXT PRIMARY KEY,
+      ultimaSync TEXT
+    )
+  `);
 });
 
 export default db;

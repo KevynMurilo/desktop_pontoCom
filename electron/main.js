@@ -10,7 +10,7 @@ const unzipper = require('unzipper');
 const getPort = require('get-port').default;
 
 process.env.LANG = 'pt_BR.UTF-8';
-const isDev = false;
+const isDev = true;
 
 const deviceId = machineIdSync(true);
 console.log('🆔 ID gerado com sucesso:', deviceId);
@@ -18,6 +18,7 @@ console.log('🆔 ID gerado com sucesso:', deviceId);
 let dynamicPort = 8080;
 let serverProcess = null;
 let syncProcess = null;
+let receiveSyncProcess = null;
 
 ipcMain.handle('get-api-base-url', () => {
   return `http://localhost:${dynamicPort}/api`;
@@ -41,19 +42,8 @@ function getAppDataPath() {
 async function findOrInstallNode() {
   return new Promise((resolve, reject) => {
     const tryNode = spawn('node', ['-v']);
-
-    tryNode.on('exit', code => {
-      if (code === 0) {
-        console.log('✔️ Node.js já está instalado');
-        resolve('node');
-      } else {
-        downloadPortableNode().then(resolve).catch(reject);
-      }
-    });
-
-    tryNode.on('error', () => {
-      downloadPortableNode().then(resolve).catch(reject);
-    });
+    tryNode.on('exit', code => code === 0 ? resolve('node') : downloadPortableNode().then(resolve).catch(reject));
+    tryNode.on('error', () => downloadPortableNode().then(resolve).catch(reject));
   });
 }
 
@@ -75,7 +65,6 @@ function downloadPortableNode() {
     }
 
     fs.mkdirSync(destFolder, { recursive: true });
-
     console.log('⬇️ Baixando Node.js portátil...');
     const file = fs.createWriteStream(zipPath);
     https.get(nodeUrl, response => {
@@ -113,7 +102,6 @@ function createWindow() {
   });
 
   Menu.setApplicationMenu(null);
-
   win.once('ready-to-show', () => {
     win.maximize();
     win.show();
@@ -124,14 +112,13 @@ function createWindow() {
     : path.join(__dirname, 'frontend/dist/ponto-eletronico/browser/index.html');
 
   const fileUrl = pathToFileURL(indexPath).toString();
-
   win.loadURL(decodeURIComponent(fileUrl)).catch(err => {
     console.error('❌ Erro ao carregar index.html:', err.stack || err);
   });
 }
 
 async function startBackend() {
-  if (serverProcess || syncProcess) {
+  if (serverProcess || syncProcess || receiveSyncProcess) {
     console.warn('⚠️ Backend já está rodando. Ignorando nova inicialização.');
     return;
   }
@@ -156,6 +143,7 @@ async function startBackend() {
     process.env.APP_LOGS_DIR = logsDir;
     process.env.APP_DB_PATH = dbPath;
     process.env.APP_PORT = dynamicPort;
+    process.env.DEVICE_ID = deviceId; // 👈 novo env para sync.receive.service.js
 
     const serverLog = fs.openSync(path.join(logsDir, 'server.log'), 'a');
     const serverErr = fs.openSync(path.join(logsDir, 'server-error.log'), 'a');
@@ -171,10 +159,6 @@ async function startBackend() {
       console.log(`🚀 Backend iniciado na porta ${dynamicPort}`);
     });
 
-    serverProcess.on('error', err => {
-      console.error('❌ Erro ao iniciar backend:', err);
-    });
-
     const syncLog = fs.openSync(path.join(logsDir, 'sync.log'), 'a');
     const syncErr = fs.openSync(path.join(logsDir, 'sync-error.log'), 'a');
 
@@ -186,15 +170,25 @@ async function startBackend() {
     });
 
     syncProcess.on('spawn', () => {
-      console.log('🔁 Serviço de sincronização iniciado');
+      console.log('🔁 Serviço de sincronização de envio iniciado');
     });
 
-    syncProcess.on('error', err => {
-      console.error('❌ Erro ao iniciar sync.service:', err);
+    const receiveLog = fs.openSync(path.join(logsDir, 'sync-receive.log'), 'a');
+    const receiveErr = fs.openSync(path.join(logsDir, 'sync-receive-error.log'), 'a');
+
+    receiveSyncProcess = spawn(nodePath, ['src/sync.receive.service.js'], {
+      cwd: backendDir,
+      stdio: ['ignore', receiveLog, receiveErr],
+      env: { ...process.env },
+      windowsHide: true
+    });
+
+    receiveSyncProcess.on('spawn', () => {
+      console.log('📥 Serviço de sincronização de recebimento iniciado');
     });
 
   } catch (err) {
-    console.error('❌ Falha ao iniciar backend:', err);
+    console.error('❌ Falha ao iniciar backend:', err.message);
   }
 }
 
@@ -212,19 +206,13 @@ if (!app.requestSingleInstanceLock()) {
   });
 
   app.on('window-all-closed', () => {
-    if (process.platform !== 'darwin') {
-      app.quit();
-    }
+    if (process.platform !== 'darwin') app.quit();
   });
 
   app.on('before-quit', () => {
-    if (serverProcess) {
-      serverProcess.kill();
-      serverProcess = null;
-    }
-    if (syncProcess) {
-      syncProcess.kill();
-      syncProcess = null;
-    }
+    [serverProcess, syncProcess, receiveSyncProcess].forEach(proc => {
+      if (proc) proc.kill();
+    });
+    serverProcess = syncProcess = receiveSyncProcess = null;
   });
 }
