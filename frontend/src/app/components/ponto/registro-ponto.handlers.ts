@@ -11,7 +11,7 @@ export class RegistroPontoHandlers {
     private vm: RegistroPontoViewModel,
     private service: RegistroPontoService,
     private camera: RegistroPontoCamera
-  ) {}
+  ) { }
 
   async inicializar(cpfInputRef: ElementRef<HTMLInputElement>) {
     this.vm.deviceIdentifier = (window as any).device?.getId?.() || 'desconhecido';
@@ -40,6 +40,24 @@ export class RegistroPontoHandlers {
       }
     }, 60000);
   }
+
+  iniciarSincronizacao() {
+    this.vm.carregandoSincronizacao.set(true);
+    this.vm.progressoSincronizacao.set(0);
+
+    this.service.sincronizarRecebimento().subscribe({
+      next: res => {
+        this.vm.progressoSincronizacao.set(100);
+        setTimeout(() => this.vm.carregandoSincronizacao.set(false), 1000);
+      },
+      error: err => {
+        this.vm.carregandoSincronizacao.set(false);
+        this.vm.mensagemErro.set('Erro ao sincronizar dados.');
+        setTimeout(() => this.vm.mensagemErro.set(null), 4000);
+      }
+    });
+  }
+
 
   verificarVinculoDispositivo() {
     this.vm.carregandoVinculo.set(true);

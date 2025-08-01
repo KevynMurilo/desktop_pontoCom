@@ -24,6 +24,14 @@ export class RegistroPontoService {
     );
   }
 
+  sincronizarRecebimento(): Observable<any> {
+    return this.getBaseUrl$().pipe(
+      switchMap(baseUrl =>
+        this.http.post(`${baseUrl}/sync-receber/manual`, {})
+      )
+    );
+  }
+
   registrar(data: RegistroPontoDTO): Observable<any> {
     const formData = new FormData();
     formData.append('cpf', data.cpf);

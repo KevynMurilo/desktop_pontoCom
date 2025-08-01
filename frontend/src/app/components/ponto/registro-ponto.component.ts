@@ -43,6 +43,12 @@ export class RegistroPontoComponent {
     this.handlers.verificarVinculoDispositivo();
   }
 
+  iniciarSincronizacao() {
+    this.handlers.iniciarSincronizacao();
+  }
+  get carregandoSincronizacao() { return this.vm.carregandoSincronizacao; }
+  get progressoSincronizacao() { return this.vm.progressoSincronizacao; }
+  
   async ngAfterViewInit() {
     await this.handlers.inicializar(this.cpfInputRef);
   }

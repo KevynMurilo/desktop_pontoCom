@@ -64,6 +64,54 @@ export async function syncDadosRecebidos(municipioId) {
     }
 }
 
+export async function syncDadosRecebidosComProgresso(municipioId, onProgress = () => { }) {
+    const since = await obterUltimaSync(municipioId);
+
+    let page = { employees: 0, calendars: 0, vacations: 0, extras: 0 };
+    let totalRegistros = 0;
+    let registrosSincronizados = 0;
+
+    let temMais = true;
+    let maiorUpdatedAt = since;
+
+    while (temMais) {
+        const response = await axios.get(`${API_SYNC_URL}/${municipioId}`, {
+            params: { ...page, size: PAGE_SIZE, since }
+        });
+
+        const { employees, calendars, vacations, extraWorkPeriods } = response.data.data;
+
+        const totalPagina = employees.length + calendars.length + vacations.length + extraWorkPeriods.length;
+        registrosSincronizados += totalPagina;
+        totalRegistros += totalPagina; // ou mantenha um estimate inicial
+
+        await salvarFuncionarios(employees);
+        await salvarCalendario(calendars);
+        await salvarFerias(vacations);
+        await salvarExtras(extraWorkPeriods);
+
+        if (response.data.data.hasMoreEmployees) page.employees++;
+        if (response.data.data.hasMoreCalendars) page.calendars++;
+        if (response.data.data.hasMoreVacations) page.vacations++;
+        if (response.data.data.hasMoreExtraWork) page.extras++;
+
+        temMais =
+            response.data.data.hasMoreEmployees ||
+            response.data.data.hasMoreCalendars ||
+            response.data.data.hasMoreVacations ||
+            response.data.data.hasMoreExtraWork;
+
+        onProgress({ registrosSincronizados, totalRegistros }); // atualiza progresso
+    }
+
+    if (maiorUpdatedAt) {
+        await salvarUltimaSync(municipioId, maiorUpdatedAt);
+    }
+
+    return { registrosSincronizados, totalRegistros };
+}
+
+
 // === Auxiliares de controle ===
 
 function obterUltimaSync(municipioId) {
@@ -176,7 +224,7 @@ async function salvarExtras(lista) {
 
 // === Identificação do dispositivo e execução programada ===
 
-async function obterMunicipioId() {
+export async function obterMunicipioId() {
     const deviceId = process.env.DEVICE_ID;
     if (!deviceId) {
         console.error('❌ DEVICE_ID não definido no ambiente');

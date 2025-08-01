@@ -4,6 +4,8 @@ import { cpfValidator } from '../../core/validators/cpf.validator';
 
 export class RegistroPontoViewModel {
   form;
+  carregandoSincronizacao = signal(false);
+  progressoSincronizacao = signal(0);
 
   modoEscuro = signal(localStorage.getItem('modo') === 'dark');
   carregandoCamera = signal(true);

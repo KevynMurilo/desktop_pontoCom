@@ -11,6 +11,7 @@ import { fileURLToPath } from 'url';
 import db from './db.js';
 import { enviarRegistrosPendentes, enviarRegistrosPorIntervalo } from './sync.service.js';
 import { getLocationByIP } from './geo.js';
+import { obterMunicipioId, syncDadosRecebidosComProgresso } from './sync.receive.service.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -157,6 +158,21 @@ app.post('/api/timerecord', upload.single('imagem'), async (req, res) => {
     res.status(500).json({ message: 'Erro interno no servidor' });
   }
 });
+
+app.post('/api/sync-receber/manual', async (req, res) => {
+  try {
+    const municipioId = await obterMunicipioId(); // você já tem essa função
+    const resultado = await syncDadosRecebidosComProgresso(municipioId, (progresso) => {
+      // opcional: salvar progresso em algum lugar acessível via GET
+    });
+
+    res.json({ message: 'Sincronização concluída com sucesso.', ...resultado });
+  } catch (err) {
+    console.error('❌ Erro ao sincronizar manualmente:', err);
+    res.status(500).json({ message: 'Erro ao sincronizar.', error: err.message });
+  }
+});
+
 
 // ✅ Forçar sincronização manual
 app.post('/api/forcar-sincronizacao', async (req, res) => {
