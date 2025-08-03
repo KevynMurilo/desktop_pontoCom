@@ -3,7 +3,7 @@ const path = require('path');
 const fs = require('fs');
 const os = require('os');
 const https = require('https');
-const { spawn } = require('child_process');
+const { spawn, fork } = require('child_process');
 const { pathToFileURL } = require('url');
 const { machineIdSync } = require('node-machine-id');
 const unzipper = require('unzipper');
@@ -19,10 +19,11 @@ let dynamicPort = 8080;
 let serverProcess = null;
 let syncProcess = null;
 let receiveSyncProcess = null;
+let ultimoProgressoSyncRecebimento = null;
+let intervaloSync = null;
 
-ipcMain.handle('get-api-base-url', () => {
-  return `http://localhost:${dynamicPort}/api`;
-});
+ipcMain.handle('get-api-base-url', () => `http://localhost:${dynamicPort}/api`);
+ipcMain.handle('get-ultimo-progresso-sync', () => ultimoProgressoSyncRecebimento);
 
 function getAppDataPath() {
   const appName = 'ponto-eletronico';
@@ -105,6 +106,10 @@ function createWindow() {
   win.once('ready-to-show', () => {
     win.maximize();
     win.show();
+
+    if (ultimoProgressoSyncRecebimento) {
+      win.webContents.send('progresso-sync-recebimento', ultimoProgressoSyncRecebimento);
+    }
   });
 
   const indexPath = isDev
@@ -143,8 +148,9 @@ async function startBackend() {
     process.env.APP_LOGS_DIR = logsDir;
     process.env.APP_DB_PATH = dbPath;
     process.env.APP_PORT = dynamicPort;
-    process.env.DEVICE_ID = deviceId; // 👈 novo env para sync.receive.service.js
+    process.env.DEVICE_ID = deviceId;
 
+    // Backend principal
     const serverLog = fs.openSync(path.join(logsDir, 'server.log'), 'a');
     const serverErr = fs.openSync(path.join(logsDir, 'server-error.log'), 'a');
 
@@ -159,6 +165,7 @@ async function startBackend() {
       console.log(`🚀 Backend iniciado na porta ${dynamicPort}`);
     });
 
+    // Serviço de envio
     const syncLog = fs.openSync(path.join(logsDir, 'sync.log'), 'a');
     const syncErr = fs.openSync(path.join(logsDir, 'sync-error.log'), 'a');
 
@@ -173,19 +180,54 @@ async function startBackend() {
       console.log('🔁 Serviço de sincronização de envio iniciado');
     });
 
-    const receiveLog = fs.openSync(path.join(logsDir, 'sync-receive.log'), 'a');
-    const receiveErr = fs.openSync(path.join(logsDir, 'sync-receive-error.log'), 'a');
+    receiveSyncProcess = fork(
+      path.join(backendDir, 'src/sync.receive.service.js'),
+      [],
+      {
+        cwd: backendDir,
+        env: { ...process.env },
+        stdio: ['inherit', 'inherit', 'inherit', 'ipc'],
+        windowsHide: true
+      }
+    );
 
-    receiveSyncProcess = spawn(nodePath, ['src/sync.receive.service.js'], {
-      cwd: backendDir,
-      stdio: ['ignore', receiveLog, receiveErr],
-      env: { ...process.env },
-      windowsHide: true
+    receiveSyncProcess.on('message', msg => {
+      if (msg?.tipo === 'progresso-sync-recebimento') {
+        ultimoProgressoSyncRecebimento = msg.payload;
+        BrowserWindow.getAllWindows().forEach(win => {
+          win.webContents.send('progresso-sync-recebimento', msg.payload);
+        });
+        return;
+      }
+
+      if (msg?.tipo === 'sync-recebimento-finalizado') {
+        console.log('📴 Finalização da sync recebida. Limpando progresso...');
+        ultimoProgressoSyncRecebimento = null;
+      }
     });
+
 
     receiveSyncProcess.on('spawn', () => {
       console.log('📥 Serviço de sincronização de recebimento iniciado');
+
+      if (receiveSyncProcess.connected) {
+        setTimeout(() => {
+          if (receiveSyncProcess.connected) {
+            console.log('🟢 Enviando primeira sincronização de recebimento (após delay)...');
+            receiveSyncProcess.send({ tipo: 'iniciar-sync' });
+          }
+        }, 3000);
+      }
+
+      // ⏱️ Inicia a repetição a cada 1h
+      intervaloSync = setInterval(() => {
+        if (receiveSyncProcess && receiveSyncProcess.connected) {
+          console.log('🕐 Enviando sincronização de recebimento (agendada)...');
+          receiveSyncProcess.send({ tipo: 'iniciar-sync' });
+        }
+      }, 60 * 60 * 1000);
     });
+
 
   } catch (err) {
     console.error('❌ Falha ao iniciar backend:', err.message);
@@ -210,6 +252,7 @@ if (!app.requestSingleInstanceLock()) {
   });
 
   app.on('before-quit', () => {
+    if (intervaloSync) clearInterval(intervaloSync);
     [serverProcess, syncProcess, receiveSyncProcess].forEach(proc => {
       if (proc) proc.kill();
     });

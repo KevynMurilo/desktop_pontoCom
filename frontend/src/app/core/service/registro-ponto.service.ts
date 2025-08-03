@@ -27,9 +27,15 @@ export class RegistroPontoService {
   sincronizarRecebimento(): Observable<any> {
     return this.getBaseUrl$().pipe(
       switchMap(baseUrl =>
-        this.http.post(`${baseUrl}/sync-receber/manual`, {})
+        this.http.post(`${baseUrl}/forcar-sincronizacao-recebimento`, {}) 
       )
     );
+  }
+
+  onProgressoSyncRecebimento(callback: (data: { registrosSincronizados: number, totalRegistros: number }) => void): void {
+    if (window?.electronAPI?.onSyncRecebimentoProgresso) {
+      window.electronAPI.onSyncRecebimentoProgresso(callback);
+    }
   }
 
   registrar(data: RegistroPontoDTO): Observable<any> {

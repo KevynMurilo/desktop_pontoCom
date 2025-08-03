@@ -159,21 +159,6 @@ app.post('/api/timerecord', upload.single('imagem'), async (req, res) => {
   }
 });
 
-app.post('/api/sync-receber/manual', async (req, res) => {
-  try {
-    const municipioId = await obterMunicipioId(); // você já tem essa função
-    const resultado = await syncDadosRecebidosComProgresso(municipioId, (progresso) => {
-      // opcional: salvar progresso em algum lugar acessível via GET
-    });
-
-    res.json({ message: 'Sincronização concluída com sucesso.', ...resultado });
-  } catch (err) {
-    console.error('❌ Erro ao sincronizar manualmente:', err);
-    res.status(500).json({ message: 'Erro ao sincronizar.', error: err.message });
-  }
-});
-
-
 // ✅ Forçar sincronização manual
 app.post('/api/forcar-sincronizacao', async (req, res) => {
   try {
@@ -203,6 +188,26 @@ app.post('/api/forcar-sincronizacao-por-data', async (req, res) => {
     res.status(500).send({ message: 'Erro ao sincronizar.', error: err.message });
   }
 });
+
+app.post('/api/forcar-sincronizacao-recebimento', async (req, res) => {
+  try {
+    const municipioId = await obterMunicipioId();
+    const resultado = await syncDadosRecebidosComProgresso(municipioId, progresso => {
+      if (process.send) {
+        process.send({
+          tipo: 'progresso-sync-recebimento',
+          payload: progresso
+        });
+      }
+    });
+
+    res.send({ message: 'Sincronização de recebimento concluída.', ...resultado });
+  } catch (err) {
+    console.error('❌ Erro ao forçar sincronização de recebimento:', err);
+    res.status(500).send({ message: 'Erro na sincronização de recebimento.', error: err.message });
+  }
+});
+
 
 // ✅ Aviso de pendência antiga
 app.get('/api/registros-pendentes/aviso', (req, res) => {

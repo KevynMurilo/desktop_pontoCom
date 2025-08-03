@@ -39,6 +39,42 @@ export class RegistroPontoHandlers {
         this.verificarVinculoDispositivo();
       }
     }, 60000);
+
+    // Controle para evitar repetição de progresso
+    let ultimaContagem = { registrosSincronizados: 0, totalRegistros: 0 };
+
+    this.service.onProgressoSyncRecebimento(({ registrosSincronizados, totalRegistros }) => {
+      // Ignora se progresso for idêntico ao anterior
+      if (
+        registrosSincronizados === ultimaContagem.registrosSincronizados &&
+        totalRegistros === ultimaContagem.totalRegistros
+      ) {
+        return;
+      }
+
+      ultimaContagem = { registrosSincronizados, totalRegistros };
+
+      if (totalRegistros === 0) {
+        this.vm.carregandoSincronizacao.set(false);
+        this.vm.totalRegistros.set(0);
+        this.vm.registrosSincronizados.set(0);
+        return;
+      }
+
+      this.vm.carregandoSincronizacao.set(true);
+      this.vm.totalRegistros.set(totalRegistros);
+      this.vm.registrosSincronizados.set(registrosSincronizados);
+
+      if (registrosSincronizados >= totalRegistros) {
+        // Aguarda breve tempo para suavidade visual
+        setTimeout(() => {
+          this.vm.carregandoSincronizacao.set(false);
+          this.vm.totalRegistros.set(0);
+          this.vm.registrosSincronizados.set(0);
+          ultimaContagem = { registrosSincronizados: 0, totalRegistros: 0 };
+        }, 1500);
+      }
+    });
   }
 
   iniciarSincronizacao() {
@@ -51,13 +87,13 @@ export class RegistroPontoHandlers {
         setTimeout(() => this.vm.carregandoSincronizacao.set(false), 1000);
       },
       error: err => {
+        console.log(err)
         this.vm.carregandoSincronizacao.set(false);
         this.vm.mensagemErro.set('Erro ao sincronizar dados.');
         setTimeout(() => this.vm.mensagemErro.set(null), 4000);
       }
     });
   }
-
 
   verificarVinculoDispositivo() {
     this.vm.carregandoVinculo.set(true);

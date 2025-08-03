@@ -46,6 +46,7 @@ export class RegistroPontoComponent {
   iniciarSincronizacao() {
     this.handlers.iniciarSincronizacao();
   }
+  
   get carregandoSincronizacao() { return this.vm.carregandoSincronizacao; }
   get progressoSincronizacao() { return this.vm.progressoSincronizacao; }
   

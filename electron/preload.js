@@ -14,3 +14,15 @@ contextBridge.exposeInMainWorld('device', {
 contextBridge.exposeInMainWorld('backendApi', {
   getApiBaseUrl: () => ipcRenderer.invoke('get-api-base-url')
 });
+
+contextBridge.exposeInMainWorld('electronAPI', {
+  onSyncRecebimentoProgresso: (callback) => {
+    ipcRenderer.on('progresso-sync-recebimento', (_, data) => callback(data));
+  },
+
+  onSyncRecebimentoFinalizado: (callback) => {
+    ipcRenderer.on('sync-recebimento-finalizado', (_, data) => callback(data));
+  },
+
+  getUltimoProgressoSync: () => ipcRenderer.invoke('get-ultimo-progresso-sync')
+});

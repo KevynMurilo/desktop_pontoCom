@@ -6,6 +6,8 @@ export class RegistroPontoViewModel {
   form;
   carregandoSincronizacao = signal(false);
   progressoSincronizacao = signal(0);
+  totalRegistros = signal(0);
+  registrosSincronizados = signal(0);
 
   modoEscuro = signal(localStorage.getItem('modo') === 'dark');
   carregandoCamera = signal(true);
