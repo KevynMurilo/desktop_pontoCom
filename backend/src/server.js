@@ -15,7 +15,7 @@ import { obterMunicipioId, syncDadosRecebidosComProgresso } from './sync.receive
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const SPRING_API_BASE_URL = 'http://localhost:8082/api';
+const SPRING_API_BASE_URL = 'https://webhook-formosago.app.br/pontocom/api';
 
 const app = express();
 
@@ -77,55 +77,55 @@ app.post('/api/timerecord', upload.single('imagem'), async (req, res) => {
     const diaSemana = hoje.getDay(); // 0 = domingo ... 6 = sábado
     const workDays = JSON.parse(funcionario.workDays || '[]');
 
-    if (!workDays.includes(diaSemana)) {
-      return res.status(403).json({ message: 'Hoje não é um dia de trabalho do funcionário.' });
-    }
+    // if (!workDays.includes(diaSemana)) {
+    //   return res.status(403).json({ message: 'Hoje não é um dia de trabalho do funcionário.' });
+    // }
 
     // === 3. Verifica se há feriado ===
     const hojeISO = hoje.toISOString().split('T')[0];
 
-    const feriado = await new Promise((resolve, reject) => {
-      db.get(`
-        SELECT * FROM calendario_municipal
-        WHERE data = ? AND deletedAt IS NULL AND (
-          escopo = 'MUNICIPAL'
-          OR (escopo = 'DEPARTAMENTO' AND descricao = (
-              SELECT departamento FROM setores WHERE id = ?
-          ))
-          OR (escopo = 'SETOR' AND descricao = (
-              SELECT nome FROM setores WHERE id = ?
-          ))
-        )
-      `, [hojeISO, funcionario.setorId, funcionario.setorId], (err, row) => {
-        if (err) return reject(err);
-        resolve(row);
-      });
-    });
+    // const feriado = await new Promise((resolve, reject) => {
+    //   db.get(`
+    //     SELECT * FROM calendario_municipal
+    //     WHERE data = ? AND deletedAt IS NULL AND (
+    //       escopo = 'MUNICIPAL'
+    //       OR (escopo = 'DEPARTAMENTO' AND descricao = (
+    //           SELECT departamento FROM setores WHERE id = ?
+    //       ))
+    //       OR (escopo = 'SETOR' AND descricao = (
+    //           SELECT nome FROM setores WHERE id = ?
+    //       ))
+    //     )
+    //   `, [hojeISO, funcionario.setorId, funcionario.setorId], (err, row) => {
+    //     if (err) return reject(err);
+    //     resolve(row);
+    //   });
+    // });
 
-    if (feriado) {
-      // === 4. Se há feriado, verifica se há período extra ===
-      const extra = await new Promise((resolve, reject) => {
-        db.get(`
-          SELECT * FROM periodos_extras
-          WHERE data_inicio <= ? AND data_fim >= ? AND deletedAt IS NULL AND (
-            escopo = 'MUNICIPAL'
-            OR (escopo = 'DEPARTAMENTO' AND descricao = (
-                SELECT departamento FROM setores WHERE id = ?
-            ))
-            OR (escopo = 'SETOR' AND descricao = (
-                SELECT nome FROM setores WHERE id = ?
-            ))
-          )
-        `, [hojeISO, hojeISO, funcionario.setorId, funcionario.setorId], (err, row) => {
-          if (err) return reject(err);
-          resolve(row);
-        });
-      });
+    // if (feriado) {
+    //   // === 4. Se há feriado, verifica se há período extra ===
+    //   const extra = await new Promise((resolve, reject) => {
+    //     db.get(`
+    //       SELECT * FROM periodos_extras
+    //       WHERE data_inicio <= ? AND data_fim >= ? AND deletedAt IS NULL AND (
+    //         escopo = 'MUNICIPAL'
+    //         OR (escopo = 'DEPARTAMENTO' AND descricao = (
+    //             SELECT departamento FROM setores WHERE id = ?
+    //         ))
+    //         OR (escopo = 'SETOR' AND descricao = (
+    //             SELECT nome FROM setores WHERE id = ?
+    //         ))
+    //       )
+    //     `, [hojeISO, hojeISO, funcionario.setorId, funcionario.setorId], (err, row) => {
+    //       if (err) return reject(err);
+    //       resolve(row);
+    //     });
+    //   });
 
-      if (!extra) {
-        return res.status(403).json({ message: 'Hoje é feriado e não há período extra para permitir o ponto.' });
-      }
-    }
+    //   if (!extra) {
+    //     return res.status(403).json({ message: 'Hoje é feriado e não há período extra para permitir o ponto.' });
+    //   }
+    // }
 
     // === 5. Salva imagem e ponto ===
     const { latitude, longitude } = await getLocationByIP();

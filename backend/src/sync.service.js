@@ -5,12 +5,19 @@ import path from 'path';
 import db from './db.js';
 import { fileURLToPath } from 'url';
 
-const API_PREFEITURA = 'http://localhost:8082/api/timerecord/dev';
-
+const API_PREFEITURA = 'https://webhook-formosago.app.br/pontocom/api/timerecord';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 console.log('🟡 sync.service.js carregado');
+
+// 🔐 Trava por CPF para evitar envios simultâneos
+const cpfsEmEnvio = new Set();
+
+// ⏱ Controla último envio por CPF (cooldown mínimo de 10s)
+const ultimoEnvioPorCpf = new Map();
+
+const TEMPO_COOLDOWN_MS = 10 * 1000;
 
 export async function enviarRegistrosPendentes() {
   const agora = new Date();
@@ -33,6 +40,19 @@ export async function enviarRegistrosPendentes() {
       if (err || !registros || registros.length === 0) return resolve(0);
 
       for (const registro of registros) {
+        const cpf = registro.cpf;
+
+        // Skip se já está em envio
+        if (cpfsEmEnvio.has(cpf)) continue;
+
+        // ⏱ Cooldown por CPF
+        const ultimo = ultimoEnvioPorCpf.get(cpf);
+        const diff = ultimo ? agora - new Date(ultimo) : Infinity;
+        if (diff < TEMPO_COOLDOWN_MS) {
+          console.log(`⏳ Aguardando cooldown para CPF ${cpf}`);
+          continue;
+        }
+
         const tentativas = registro.tentativas ?? 0;
         const ultimaTentativa = registro.ultima_tentativa ? new Date(registro.ultima_tentativa) : null;
         const tempoDecorrido = ultimaTentativa ? agora - ultimaTentativa : Infinity;
@@ -40,10 +60,12 @@ export async function enviarRegistrosPendentes() {
 
         if (tempoDecorrido < limiteTempo) continue;
 
+        cpfsEmEnvio.add(cpf);
         tentativasRealizadas++;
-        console.log(`🔁 Tentando enviar registro ID ${registro.id} (CPF: ${registro.cpf})`);
 
         try {
+          console.log(`🔁 Tentando enviar registro ID ${registro.id} (CPF: ${cpf})`);
+
           if (!fs.existsSync(registro.imagemPath)) {
             console.warn(`⚠️ Imagem não encontrada para ID ${registro.id}: ${registro.imagemPath}`);
             marcarComoErroDefinitivo(registro.id, 'Imagem não encontrada localmente');
@@ -65,6 +87,7 @@ export async function enviarRegistrosPendentes() {
           if (response.status >= 200 && response.status < 300) {
             db.run('UPDATE registros SET enviado = 1 WHERE id = ?', [registro.id]);
             console.log(`✅ Registro ID ${registro.id} enviado com sucesso.`);
+            ultimoEnvioPorCpf.set(cpf, new Date());
           } else {
             const mensagem = response.data?.message || response.statusText;
             tratarErroEnvio(registro.id, tentativas, response.status, mensagem);
@@ -80,6 +103,9 @@ export async function enviarRegistrosPendentes() {
           } else {
             console.warn(`🌐 Backend indisponível ao enviar ID ${registro.id}: ${e.message}`);
           }
+
+        } finally {
+          cpfsEmEnvio.delete(cpf);
         }
       }
 
@@ -106,13 +132,15 @@ export async function enviarRegistrosPorIntervalo(dataInicio, dataFim, incluirEr
       console.log(`📅 ${registros.length} registro(s) encontrado(s) entre ${dataInicio} e ${dataFim}`);
 
       for (const r of registros) {
-        try {
-          if (!fs.existsSync(r.imagemPath)) {
-            console.warn(`⚠️ Imagem não encontrada: ${r.imagemPath}`);
-            marcarComoErroDefinitivo(r.id, 'Imagem não encontrada');
-            continue;
-          }
+        const cpf = r.cpf;
 
+        if (!fs.existsSync(r.imagemPath)) {
+          console.warn(`⚠️ Imagem não encontrada: ${r.imagemPath}`);
+          marcarComoErroDefinitivo(r.id, 'Imagem não encontrada');
+          continue;
+        }
+
+        try {
           const form = new FormData();
           form.append('cpf', r.cpf);
           form.append('latitude', r.latitude);
@@ -148,7 +176,7 @@ export async function enviarRegistrosPorIntervalo(dataInicio, dataFim, incluirEr
 
 function tratarErroEnvio(id, tentativas, status, mensagem) {
   const agora = new Date().toISOString();
-  const ERROS_PERMANENTES = [403, 404, 409];
+  const ERROS_PERMANENTES = [403, 404, 409]; 
   const erroDefinitivo = ERROS_PERMANENTES.includes(status) || tentativas + 1 >= 5 ? 1 : 0;
 
   if (erroDefinitivo) {

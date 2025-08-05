@@ -1,8 +1,8 @@
 import axios from 'axios';
 import db from './db.js';
 
-const API_SYNC_URL = 'http://localhost:8082/api/sync/municipality';
-const DEVICE_API_URL = 'http://localhost:8082/api/device/identifier';
+const API_SYNC_URL = 'https://webhook-formosago.app.br/pontocom/api/sync/municipality';
+const DEVICE_API_URL = 'https://webhook-formosago.app.br/pontocom/api/device/identifier';
 const PAGE_SIZE = 50;
 
 export async function syncDadosRecebidosComProgresso(municipioId, onProgress = () => {}) {
