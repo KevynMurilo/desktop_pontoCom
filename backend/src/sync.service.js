@@ -5,16 +5,14 @@ import path from 'path';
 import db from './db.js';
 import { fileURLToPath } from 'url';
 
-const API_PREFEITURA = 'https://webhook-formosago.app.br/pontocom/api/timerecord';
+const API_PREFEITURA = 'https://backpontocerto.formosa.go.gov.br/api/timerecord';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 console.log('🟡 sync.service.js carregado');
 
-// 🔐 Trava por CPF para evitar envios simultâneos
 const cpfsEmEnvio = new Set();
 
-// ⏱ Controla último envio por CPF (cooldown mínimo de 10s)
 const ultimoEnvioPorCpf = new Map();
 
 const TEMPO_COOLDOWN_MS = 10 * 1000;

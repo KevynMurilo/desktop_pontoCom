@@ -19,10 +19,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onSyncRecebimentoProgresso: (callback) => {
     ipcRenderer.on('progresso-sync-recebimento', (_, data) => callback(data));
   },
-
   onSyncRecebimentoFinalizado: (callback) => {
     ipcRenderer.on('sync-recebimento-finalizado', (_, data) => callback(data));
   },
-
   getUltimoProgressoSync: () => ipcRenderer.invoke('get-ultimo-progresso-sync')
+});
+
+contextBridge.exposeInMainWorld('electron', {
+  send: (channel, data) => ipcRenderer.send(channel, data)
 });

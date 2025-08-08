@@ -139,6 +139,8 @@ export class RegistroPontoHandlers {
   async registrarPonto() {
     if (!this.vm.form.valid || !this.vm.imagemCapturada) return;
 
+    this.vm.registrandoPonto.set(true);
+
     const blob = await (await fetch(this.vm.imagemCapturada)).blob();
     const file = new File([blob], 'foto.jpg', { type: 'image/jpeg' });
     const cpf = this.vm.form.value.cpf!;
@@ -154,17 +156,27 @@ export class RegistroPontoHandlers {
         setTimeout(() => this.vm.mensagemSucesso.set(null), 3000);
         this.vm.form.reset();
         this.camera.reiniciarCamera();
+
+        setTimeout(() => {
+          this.vm.registrandoPonto.set(false);
+        }, 2000);
       },
       error: err => {
         this.vm.mensagemErro.set(err?.error?.message || '❌ Erro ao registrar ponto.');
         this.vm.mensagemSucesso.set(null);
         setTimeout(() => this.vm.mensagemErro.set(null), 4000);
+
+        setTimeout(() => {
+          this.vm.registrandoPonto.set(false);
+        }, 2000);
       }
     });
   }
 
   tratarEnter(event: KeyboardEvent, input: ElementRef<HTMLInputElement>) {
     event.preventDefault();
+    if (this.vm.tirandoFoto()) return; 
+
     if (!this.vm.fotoCapturada()) {
       this.camera.tirarFoto();
     } else if (this.vm.form.valid) {

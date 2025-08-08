@@ -52,6 +52,13 @@
       <span *ngIf="modoEscuro()" class="text-xl">☀️</span>
       <span *ngIf="!modoEscuro()" class="text-xl">🌙</span>
     </button>
+    <button (click)="refresh()"
+      class="h-10 w-10 flex items-center justify-center rounded-full transition-all duration-300"
+      [class.bg-gray-800]="modoEscuro()" [class.text-yellow-400]="modoEscuro()" [class.bg-white]="!modoEscuro()"
+      [class.text-indigo-600]="!modoEscuro()" [class.hover:bg-gray-700]="modoEscuro()"
+      [class.hover:bg-gray-200]="!modoEscuro()">
+      <span class="text-xl">🔄</span>
+    </button>
     <button (click)="mostrarConfiguracoes.set(true)"
       class="h-10 w-10 flex items-center justify-center rounded-full transition-all duration-300"
       [class.bg-gray-800]="modoEscuro()" [class.text-white]="modoEscuro()" [class.bg-white]="!modoEscuro()"
@@ -201,7 +208,7 @@
       <!-- Botões de Ação do Formulário -->
       <div class="flex flex-col sm:flex-row gap-2 pt-2">
         <button type="button" *ngIf="!fotoCapturada()" (click)="tirarFoto()"
-          class="w-full flex items-center justify-center gap-2 px-3 py-3 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-md shadow-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-indigo-500">
+          class="w-full sm:w-1/2 flex items-center justify-center gap-2 px-3 py-3 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-md shadow-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-indigo-500">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
             <path fill-rule="evenodd"
               d="M4 5a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V7a2 2 0 00-2-2h-1.586a1 1 0 01-.707-.293l-1.121-1.121A2 2 0 0011.172 3H8.828a2 2 0 00-1.414.586L6.293 4.707A1 1 0 015.586 5H4zm6 9a3 3 0 100-6 3 3 0 000 6z"
@@ -220,7 +227,7 @@
           Repetir
         </button>
 
-        <button type="submit" [disabled]="form.invalid || !fotoCapturada()"
+        <button type="submit" [disabled]="form.invalid || !fotoCapturada() || vm.registrandoPonto()"
           class="w-full sm:w-1/2 flex items-center justify-center gap-2 px-3 py-3 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-md shadow-sm transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-400">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
             <path fill-rule="evenodd"

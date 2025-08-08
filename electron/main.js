@@ -10,7 +10,7 @@ const unzipper = require('unzipper');
 const getPort = require('get-port').default;
 
 process.env.LANG = 'pt_BR.UTF-8';
-const isDev = false;
+const isDev = true;
 
 const deviceId = machineIdSync(true);
 console.log('🆔 ID gerado com sucesso:', deviceId);
@@ -228,6 +228,20 @@ async function startBackend() {
       }, 60 * 60 * 1000);
     });
 
+
+    ipcMain.on('reload-app', () => {
+      const win = BrowserWindow.getAllWindows()[0];
+      if (!win) return;
+
+      const indexPath = isDev
+        ? path.join(__dirname, '../frontend/dist/ponto-eletronico/browser/index.html')
+        : path.join(__dirname, 'frontend/dist/ponto-eletronico/browser/index.html');
+
+      const fileUrl = pathToFileURL(indexPath).toString();
+      win.loadURL(decodeURIComponent(fileUrl)).catch(err => {
+        console.error('❌ Erro ao recarregar index.html:', err);
+      });
+    });
 
   } catch (err) {
     console.error('❌ Falha ao iniciar backend:', err.message);

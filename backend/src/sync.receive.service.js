@@ -1,12 +1,31 @@
 import axios from 'axios';
 import db from './db.js';
+import fs from 'fs';
+import path from 'path';
 
-const API_SYNC_URL = 'https://webhook-formosago.app.br/pontocom/api/sync/municipality';
-const DEVICE_API_URL = 'https://webhook-formosago.app.br/pontocom/api/device/identifier';
+const logsDir = process.env.APP_LOGS_DIR || path.join('.', 'logs');
+const logFile = fs.createWriteStream(path.join(logsDir, 'sync-receive.log'), { flags: 'a' });
+const errFile = fs.createWriteStream(path.join(logsDir, 'sync-receive-error.log'), { flags: 'a' });
+
+console.log = (...args) => {
+  const msg = `[${new Date().toISOString()}] ${args.join(' ')}\n`;
+  logFile.write(msg);
+  process.stdout.write(msg);
+};
+
+console.error = (...args) => {
+  const msg = `[${new Date().toISOString()}] ${args.join(' ')}\n`;
+  errFile.write(msg);
+  process.stderr.write(msg);
+};
+
+const API_SYNC_URL = 'https://backpontocerto.formosa.go.gov.br/api/sync/municipality';
+const DEVICE_API_URL = 'https://backpontocerto.formosa.go.gov.br/api/device/identifier';
 const PAGE_SIZE = 50;
 
 export async function syncDadosRecebidosComProgresso(municipioId, onProgress = () => {}) {
   const since = await obterUltimaSync(municipioId);
+  console.log(`\u{1F4E1} Iniciando sync de recebimento para município ${municipioId} a partir de ${since || 'início dos tempos'}`);
 
   let page = { employees: 0, calendars: 0, vacations: 0, extras: 0 };
   let registrosSincronizados = 0;
@@ -16,6 +35,8 @@ export async function syncDadosRecebidosComProgresso(municipioId, onProgress = (
   let totalCalculado = false;
 
   while (temMais) {
+    console.log(`\u27A1\uFE0F Buscando página: emp=${page.employees}, cal=${page.calendars}, fer=${page.vacations}, ext=${page.extras}`);
+
     const params = {
       employeePage: page.employees,
       calendarPage: page.calendars,
@@ -32,9 +53,9 @@ export async function syncDadosRecebidosComProgresso(municipioId, onProgress = (
       totalEmployees, totalCalendars, totalVacations, totalExtraWork
     } = response.data.data;
 
-    const totalPagina =
-      employees.length + calendars.length + vacations.length + extraWorkPeriods.length;
+    console.log(`\u{1F4E5} Recebidos: ${employees.length} funcionarios, ${calendars.length} feriados, ${vacations.length} férias, ${extraWorkPeriods.length} extras`);
 
+    const totalPagina = employees.length + calendars.length + vacations.length + extraWorkPeriods.length;
     registrosSincronizados += totalPagina;
 
     if (!totalCalculado) {
@@ -43,7 +64,7 @@ export async function syncDadosRecebidosComProgresso(municipioId, onProgress = (
         (totalCalendars ?? 0) +
         (totalVacations ?? 0) +
         (totalExtraWork ?? 0);
-
+      console.log(`\u{1F4CA} Total estimado a sincronizar: ${totalRegistros}`);
       totalCalculado = true;
     }
 
@@ -67,6 +88,8 @@ export async function syncDadosRecebidosComProgresso(municipioId, onProgress = (
     await salvarFerias(vacations);
     await salvarExtras(extraWorkPeriods);
 
+    console.log(`\u2705 Página processada. Total sincronizado até agora: ${registrosSincronizados}/${totalRegistros}`);
+
     if (response.data.data.hasMoreEmployees) page.employees++;
     if (response.data.data.hasMoreCalendars) page.calendars++;
     if (response.data.data.hasMoreVacations) page.vacations++;
@@ -83,8 +106,11 @@ export async function syncDadosRecebidosComProgresso(municipioId, onProgress = (
 
   if (maiorUpdatedAt) {
     try {
+      console.log(`\u{1F4CC} Salvando data da última sync: ${maiorUpdatedAt}`);
       await salvarUltimaSync(municipioId, maiorUpdatedAt);
-    } catch {}
+    } catch (e) {
+      console.error('Erro ao salvar ultima sync:', e);
+    }
   }
 
   onProgress({ registrosSincronizados, totalRegistros });
@@ -95,6 +121,8 @@ export async function syncDadosRecebidosComProgresso(municipioId, onProgress = (
       payload: { finalizado: true }
     });
   }
+
+  console.log(`\u{1F389} Sync finalizada. Total de registros: ${registrosSincronizados}`);
 
   return { registrosSincronizados, totalRegistros };
 }

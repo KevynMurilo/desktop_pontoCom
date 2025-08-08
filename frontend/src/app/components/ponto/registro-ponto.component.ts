@@ -46,10 +46,10 @@ export class RegistroPontoComponent {
   iniciarSincronizacao() {
     this.handlers.iniciarSincronizacao();
   }
-  
+
   get carregandoSincronizacao() { return this.vm.carregandoSincronizacao; }
   get progressoSincronizacao() { return this.vm.progressoSincronizacao; }
-  
+
   async ngAfterViewInit() {
     await this.handlers.inicializar(this.cpfInputRef);
   }
@@ -77,12 +77,15 @@ export class RegistroPontoComponent {
   get dispositivoSelecionadoId() { return this.vm.dispositivoSelecionadoId; }
   get deviceIdentifier() { return this.vm.deviceIdentifier; }
 
-  // ✅ Métodos usados no HTML
   alternarTema() {
     const novo = !this.vm.modoEscuro();
     this.vm.modoEscuro.set(novo);
     localStorage.setItem('modo', novo ? 'dark' : 'light');
     document.documentElement.classList.toggle('dark', novo);
+  }
+
+  refresh() {
+    (window as any).electron?.send('reload-app');
   }
 
   tirarFoto() {

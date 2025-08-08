@@ -15,7 +15,7 @@ import { obterMunicipioId, syncDadosRecebidosComProgresso } from './sync.receive
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const SPRING_API_BASE_URL = 'https://webhook-formosago.app.br/pontocom/api';
+const SPRING_API_BASE_URL = 'https://backpontocerto.formosa.go.gov.br/api';
 
 const app = express();
 

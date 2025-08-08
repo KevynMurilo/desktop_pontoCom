@@ -8,12 +8,14 @@ export class RegistroPontoViewModel {
   progressoSincronizacao = signal(0);
   totalRegistros = signal(0);
   registrosSincronizados = signal(0);
+  registrandoPonto = signal(false);
 
   modoEscuro = signal(localStorage.getItem('modo') === 'dark');
   carregandoCamera = signal(true);
   mostrarFlash = signal(false);
   fotoTirada = signal(false);
   fotoCapturada = computed(() => this.fotoTirada());
+  tirandoFoto = signal(false);
 
   statusOnline = signal(false);
   mensagemSucesso = signal<string | null>(null);

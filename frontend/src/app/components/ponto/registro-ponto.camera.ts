@@ -53,6 +53,9 @@ export class RegistroPontoCamera {
   }
 
   tirarFoto() {
+    if (this.vm.tirandoFoto()) return; 
+    this.vm.tirandoFoto.set(true);
+
     this.vm.mostrarFlash.set(true);
     setTimeout(() => {
       const audio = new Audio('assets/camera-shutter-roger.mp3');
@@ -66,7 +69,10 @@ export class RegistroPontoCamera {
       this.vm.fotoTirada.set(true);
 
       this.pararStreamAtual();
-      setTimeout(() => this.vm.mostrarFlash.set(false), 150);
+      setTimeout(() => {
+        this.vm.mostrarFlash.set(false);
+        this.vm.tirandoFoto.set(false); 
+      }, 150);
     }, 250);
   }
 
