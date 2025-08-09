@@ -10,7 +10,14 @@ const unzipper = require('unzipper');
 const getPort = require('get-port').default;
 
 process.env.LANG = 'pt_BR.UTF-8';
+
+// 🔧 Deixe true/false para testar manualmente.
+// Se quiser automático, troque para:  const isDev = !app.isPackaged;
 const isDev = true;
+
+// Permite forçar via variável de ambiente (opcional)
+const forcedDev = process.env.FORCE_DEV === 'true' || process.env.FORCE_DEV === '1';
+const effectiveIsDev = forcedDev ? true : isDev;
 
 const deviceId = machineIdSync(true);
 console.log('🆔 ID gerado com sucesso:', deviceId);
@@ -25,6 +32,7 @@ let intervaloSync = null;
 ipcMain.handle('get-api-base-url', () => `http://localhost:${dynamicPort}/api`);
 ipcMain.handle('get-ultimo-progresso-sync', () => ultimoProgressoSyncRecebimento);
 
+// --------- Utils de caminho ---------
 function getAppDataPath() {
   const appName = 'ponto-eletronico';
   const basePath = app.getPath('appData');
@@ -40,11 +48,30 @@ function getAppDataPath() {
   }
 }
 
+function ensureExistsOrThrow(p, label) {
+  if (!fs.existsSync(p)) {
+    throw new Error(`${label} não existe: ${p}`);
+  }
+  return p;
+}
+
+// --------- Node portátil / seleção de execPath ---------
 async function findOrInstallNode() {
   return new Promise((resolve, reject) => {
-    const tryNode = spawn('node', ['-v']);
-    tryNode.on('exit', code => code === 0 ? resolve('node') : downloadPortableNode().then(resolve).catch(reject));
-    tryNode.on('error', () => downloadPortableNode().then(resolve).catch(reject));
+    // 1) tenta o node do sistema
+    const tryNode = spawn('node', ['-v'], { windowsHide: true });
+    tryNode.on('exit', code => {
+      if (code === 0) {
+        console.log('✔️ Usando Node do sistema (PATH)');
+        resolve('node');
+      } else {
+        downloadPortableNode().then(resolve).catch(reject);
+      }
+    });
+    tryNode.on('error', () => {
+      // PATH não tem node -> baixa portátil
+      downloadPortableNode().then(resolve).catch(reject);
+    });
   });
 }
 
@@ -60,7 +87,7 @@ function downloadPortableNode() {
     const nodePath = path.join(destFolder, filename, 'node.exe');
 
     if (fs.existsSync(nodePath)) {
-      console.log('✔️ Node.js portátil já existe');
+      console.log('✔️ Node.js portátil já existe em', nodePath);
       resolve(nodePath);
       return;
     }
@@ -75,7 +102,7 @@ function downloadPortableNode() {
           fs.createReadStream(zipPath)
             .pipe(unzipper.Extract({ path: destFolder }))
             .on('close', () => {
-              console.log('✅ Node.js portátil extraído');
+              console.log('✅ Node.js portátil extraído em', destFolder);
               resolve(nodePath);
             })
             .on('error', reject);
@@ -85,7 +112,8 @@ function downloadPortableNode() {
   });
 }
 
-function createWindow() {
+// --------- Janela ---------
+function createWindow(frontendIndexPath) {
   const win = new BrowserWindow({
     width: 1280,
     height: 800,
@@ -103,25 +131,24 @@ function createWindow() {
   });
 
   Menu.setApplicationMenu(null);
+
   win.once('ready-to-show', () => {
     win.maximize();
     win.show();
-
     if (ultimoProgressoSyncRecebimento) {
       win.webContents.send('progresso-sync-recebimento', ultimoProgressoSyncRecebimento);
     }
   });
 
-  const indexPath = isDev
-    ? path.join(__dirname, '../frontend/dist/ponto-eletronico/browser/index.html')
-    : path.join(__dirname, 'frontend/dist/ponto-eletronico/browser/index.html');
-
-  const fileUrl = pathToFileURL(indexPath).toString();
+  const fileUrl = pathToFileURL(frontendIndexPath).toString();
   win.loadURL(decodeURIComponent(fileUrl)).catch(err => {
     console.error('❌ Erro ao carregar index.html:', err.stack || err);
   });
+
+  return win;
 }
 
+// --------- Backend ---------
 async function startBackend() {
   if (serverProcess || syncProcess || receiveSyncProcess) {
     console.warn('⚠️ Backend já está rodando. Ignorando nova inicialização.');
@@ -130,11 +157,32 @@ async function startBackend() {
 
   try {
     const nodePath = await findOrInstallNode();
+    console.log('▶️ Executável Node selecionado:', nodePath);
     dynamicPort = await getPort();
 
-    const backendDir = isDev
+    // Caminhos dev/prod com fallback seguro
+    let backendDir = effectiveIsDev
       ? path.join(__dirname, '../backend')
       : path.join(__dirname, 'backend');
+
+    let frontendIndex = effectiveIsDev
+      ? path.join(__dirname, '../frontend/dist/ponto-eletronico/browser/index.html')
+      : path.join(__dirname, 'frontend/dist/ponto-eletronico/browser/index.html');
+
+    // Fallbacks caso alguém deixe isDev=true mas rode empacotado:
+    if (!fs.existsSync(backendDir)) {
+      const alt = path.join(__dirname, 'backend');
+      if (fs.existsSync(alt)) backendDir = alt;
+    }
+    if (!fs.existsSync(frontendIndex)) {
+      const alt = path.join(__dirname, 'frontend/dist/ponto-eletronico/browser/index.html');
+      if (fs.existsSync(alt)) frontendIndex = alt;
+    }
+
+    // Valida caminhos antes do spawn/fork (evita ENOENT por cwd inválido)
+    ensureExistsOrThrow(backendDir, 'backendDir');
+    ensureExistsOrThrow(path.dirname(frontendIndex), 'frontendDir');
+    ensureExistsOrThrow(frontendIndex, 'frontend index.html');
 
     const appDataDir = getAppDataPath();
     const uploadsDir = path.join(appDataDir, 'uploads');
@@ -147,39 +195,40 @@ async function startBackend() {
     process.env.APP_UPLOADS_DIR = uploadsDir;
     process.env.APP_LOGS_DIR = logsDir;
     process.env.APP_DB_PATH = dbPath;
-    process.env.APP_PORT = dynamicPort;
+    process.env.APP_PORT = String(dynamicPort);
     process.env.DEVICE_ID = deviceId;
 
-    // Backend principal
+    // Logs
     const serverLog = fs.openSync(path.join(logsDir, 'server.log'), 'a');
     const serverErr = fs.openSync(path.join(logsDir, 'server-error.log'), 'a');
+    const syncLog = fs.openSync(path.join(logsDir, 'sync.log'), 'a');
+    const syncErr = fs.openSync(path.join(logsDir, 'sync-error.log'), 'a');
 
+    // Backend principal
     serverProcess = spawn(nodePath, ['src/server.js'], {
       cwd: backendDir,
       stdio: ['ignore', serverLog, serverErr],
       env: { ...process.env },
       windowsHide: true
     });
-
     serverProcess.on('spawn', () => {
       console.log(`🚀 Backend iniciado na porta ${dynamicPort}`);
     });
+    serverProcess.on('error', (e) => console.error('❌ serverProcess error:', e));
+    serverProcess.on('exit', (c, s) => console.log('⛔ serverProcess saiu:', c, s));
 
     // Serviço de envio
-    const syncLog = fs.openSync(path.join(logsDir, 'sync.log'), 'a');
-    const syncErr = fs.openSync(path.join(logsDir, 'sync-error.log'), 'a');
-
     syncProcess = spawn(nodePath, ['src/sync.service.js'], {
       cwd: backendDir,
       stdio: ['ignore', syncLog, syncErr],
       env: { ...process.env },
       windowsHide: true
     });
+    syncProcess.on('spawn', () => console.log('🔁 Serviço de sincronização de envio iniciado'));
+    syncProcess.on('error', (e) => console.error('❌ syncProcess error:', e));
+    syncProcess.on('exit', (c, s) => console.log('⛔ syncProcess saiu:', c, s));
 
-    syncProcess.on('spawn', () => {
-      console.log('🔁 Serviço de sincronização de envio iniciado');
-    });
-
+    // Serviço de recebimento (usa fork com execPath = nodePath)
     receiveSyncProcess = fork(
       path.join(backendDir, 'src/sync.receive.service.js'),
       [],
@@ -187,7 +236,8 @@ async function startBackend() {
         cwd: backendDir,
         env: { ...process.env },
         stdio: ['inherit', 'inherit', 'inherit', 'ipc'],
-        windowsHide: true
+        windowsHide: true,
+        execPath: nodePath // <-- garante que o fork use o mesmo Node escolhido
       }
     );
 
@@ -199,13 +249,14 @@ async function startBackend() {
         });
         return;
       }
-
       if (msg?.tipo === 'sync-recebimento-finalizado') {
         console.log('📴 Finalização da sync recebida. Limpando progresso...');
         ultimoProgressoSyncRecebimento = null;
+        BrowserWindow.getAllWindows().forEach(win => {
+          win.webContents.send('sync-recebimento-finalizado', true);
+        });
       }
     });
-
 
     receiveSyncProcess.on('spawn', () => {
       console.log('📥 Serviço de sincronização de recebimento iniciado');
@@ -219,7 +270,7 @@ async function startBackend() {
         }, 3000);
       }
 
-      // ⏱️ Inicia a repetição a cada 1h
+      // ⏱️ Agendamento (1h)
       intervaloSync = setInterval(() => {
         if (receiveSyncProcess && receiveSyncProcess.connected) {
           console.log('🕐 Enviando sincronização de recebimento (agendada)...');
@@ -228,37 +279,55 @@ async function startBackend() {
       }, 60 * 60 * 1000);
     });
 
+    receiveSyncProcess.on('error', (e) => console.error('❌ receiveSyncProcess error:', e));
+    receiveSyncProcess.on('exit', (c, s) => {
+      console.log('⛔ receiveSyncProcess saiu:', c, s);
+      if (intervaloSync) clearInterval(intervaloSync);
+    });
 
+    // Handler para recarregar o front
     ipcMain.on('reload-app', () => {
       const win = BrowserWindow.getAllWindows()[0];
       if (!win) return;
-
-      const indexPath = isDev
-        ? path.join(__dirname, '../frontend/dist/ponto-eletronico/browser/index.html')
-        : path.join(__dirname, 'frontend/dist/ponto-eletronico/browser/index.html');
-
-      const fileUrl = pathToFileURL(indexPath).toString();
+      const fileUrl = pathToFileURL(frontendIndex).toString();
       win.loadURL(decodeURIComponent(fileUrl)).catch(err => {
         console.error('❌ Erro ao recarregar index.html:', err);
       });
     });
 
+    // Retorna caminho do index para createWindow usar
+    return frontendIndex;
   } catch (err) {
     console.error('❌ Falha ao iniciar backend:', err.message);
+    throw err;
   }
 }
 
+// --------- Ciclo do app ---------
 if (!app.requestSingleInstanceLock()) {
   app.quit();
 } else {
   app.whenReady().then(async () => {
     console.log('🟢 App Electron iniciado');
-    await startBackend();
-    createWindow();
+    try {
+      const frontendIndex = await startBackend();
+      createWindow(frontendIndex);
+    } catch (_) {
+      // falhou ao iniciar backend; ainda abre janela com mensagem de erro se quiser
+      const fallbackFront = effectiveIsDev
+        ? path.join(__dirname, '../frontend/dist/ponto-eletronico/browser/index.html')
+        : path.join(__dirname, 'frontend/dist/ponto-eletronico/browser/index.html');
+      createWindow(fallbackFront);
+    }
   });
 
   app.on('second-instance', () => {
     console.warn('⚠️ Tentativa de abrir segunda instância ignorada');
+    const win = BrowserWindow.getAllWindows()[0];
+    if (win) {
+      if (win.isMinimized()) win.restore();
+      win.focus();
+    }
   });
 
   app.on('window-all-closed', () => {
@@ -268,7 +337,9 @@ if (!app.requestSingleInstanceLock()) {
   app.on('before-quit', () => {
     if (intervaloSync) clearInterval(intervaloSync);
     [serverProcess, syncProcess, receiveSyncProcess].forEach(proc => {
-      if (proc) proc.kill();
+      if (proc) {
+        try { proc.kill(); } catch {}
+      }
     });
     serverProcess = syncProcess = receiveSyncProcess = null;
   });
