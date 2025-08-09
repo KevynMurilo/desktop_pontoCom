@@ -5,6 +5,10 @@ import path from 'path';
 import db from './db.js';
 import { fileURLToPath } from 'url';
 
+// 🔐 imports p/ descriptografia das imagens .enc
+import { getOrCreateMaster } from './security/keys.js';
+import { decryptFromFile } from './security/crypto-file.js';
+
 const API_PREFEITURA = 'https://backpontocerto.formosa.go.gov.br/api/timerecord';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -12,10 +16,28 @@ const __dirname = path.dirname(__filename);
 console.log('🟡 sync.service.js carregado');
 
 const cpfsEmEnvio = new Set();
-
 const ultimoEnvioPorCpf = new Map();
-
 const TEMPO_COOLDOWN_MS = 10 * 1000;
+
+// (opcional) apaga imagem local após envio OK para reduzir superfície
+const APAGAR_IMAGEM_APOS_ENVIO = true;
+
+// Helper: obtém a imagem pronta para anexar (stream ou buffer se .enc)
+async function getImagemParaEnvio(caminho) {
+  if (caminho.endsWith('.enc')) {
+    const { key } = await getOrCreateMaster();
+    const buffer = await decryptFromFile(key, caminho); // volta .webp em memória
+    const nome = path.basename(caminho).replace(/\.enc$/, '.webp');
+    return { tipo: 'buffer', buffer, nome, contentType: 'image/webp' };
+  }
+  // legado: arquivo já está em .webp no disco
+  return {
+    tipo: 'stream',
+    stream: fs.createReadStream(caminho),
+    nome: path.basename(caminho),
+    contentType: 'image/webp',
+  };
+}
 
 export async function enviarRegistrosPendentes() {
   const agora = new Date();
@@ -24,91 +46,105 @@ export async function enviarRegistrosPendentes() {
     10 * 60 * 1000,
     60 * 60 * 1000,
     3 * 60 * 60 * 1000,
-    6 * 60 * 60 * 1000
+    6 * 60 * 60 * 1000,
   ];
 
   let tentativasRealizadas = 0;
 
   return new Promise((resolve) => {
-    db.all(`
+    db.all(
+      `
       SELECT * FROM registros 
       WHERE enviado = 0 AND erro_definitivo = 0 AND (tentativas IS NULL OR tentativas < 5)
       ORDER BY created_at ASC
-    `, async (err, registros) => {
-      if (err || !registros || registros.length === 0) return resolve(0);
+    `,
+      async (err, registros) => {
+        if (err || !registros || registros.length === 0) return resolve(0);
 
-      for (const registro of registros) {
-        const cpf = registro.cpf;
+        for (const registro of registros) {
+          const cpf = registro.cpf;
 
-        // Skip se já está em envio
-        if (cpfsEmEnvio.has(cpf)) continue;
+          // Skip se já está em envio
+          if (cpfsEmEnvio.has(cpf)) continue;
 
-        // ⏱ Cooldown por CPF
-        const ultimo = ultimoEnvioPorCpf.get(cpf);
-        const diff = ultimo ? agora - new Date(ultimo) : Infinity;
-        if (diff < TEMPO_COOLDOWN_MS) {
-          console.log(`⏳ Aguardando cooldown para CPF ${cpf}`);
-          continue;
-        }
-
-        const tentativas = registro.tentativas ?? 0;
-        const ultimaTentativa = registro.ultima_tentativa ? new Date(registro.ultima_tentativa) : null;
-        const tempoDecorrido = ultimaTentativa ? agora - ultimaTentativa : Infinity;
-        const limiteTempo = tentativasLimites[tentativas] ?? Infinity;
-
-        if (tempoDecorrido < limiteTempo) continue;
-
-        cpfsEmEnvio.add(cpf);
-        tentativasRealizadas++;
-
-        try {
-          console.log(`🔁 Tentando enviar registro ID ${registro.id} (CPF: ${cpf})`);
-
-          if (!fs.existsSync(registro.imagemPath)) {
-            console.warn(`⚠️ Imagem não encontrada para ID ${registro.id}: ${registro.imagemPath}`);
-            marcarComoErroDefinitivo(registro.id, 'Imagem não encontrada localmente');
+          // ⏱ Cooldown por CPF
+          const ultimo = ultimoEnvioPorCpf.get(cpf);
+          const diff = ultimo ? agora - new Date(ultimo) : Infinity;
+          if (diff < TEMPO_COOLDOWN_MS) {
+            console.log(`⏳ Aguardando cooldown para CPF ${cpf}`);
             continue;
           }
 
-          const form = new FormData();
-          form.append('cpf', registro.cpf);
-          form.append('latitude', registro.latitude);
-          form.append('longitude', registro.longitude);
-          form.append('deviceIdentifier', registro.deviceIdentifier);
-          form.append('imagem', fs.createReadStream(registro.imagemPath));
-          form.append('received', registro.created_at);
+          const tentativas = registro.tentativas ?? 0;
+          const ultimaTentativa = registro.ultima_tentativa ? new Date(registro.ultima_tentativa) : null;
+          const tempoDecorrido = ultimaTentativa ? agora - ultimaTentativa : Infinity;
+          const limiteTempo = tentativasLimites[tentativas] ?? Infinity;
 
-          const response = await axios.post(API_PREFEITURA, form, {
-            headers: form.getHeaders()
-          });
+          if (tempoDecorrido < limiteTempo) continue;
 
-          if (response.status >= 200 && response.status < 300) {
-            db.run('UPDATE registros SET enviado = 1 WHERE id = ?', [registro.id]);
-            console.log(`✅ Registro ID ${registro.id} enviado com sucesso.`);
-            ultimoEnvioPorCpf.set(cpf, new Date());
-          } else {
-            const mensagem = response.data?.message || response.statusText;
-            tratarErroEnvio(registro.id, tentativas, response.status, mensagem);
+          cpfsEmEnvio.add(cpf);
+          tentativasRealizadas++;
+
+          try {
+            console.log(`🔁 Tentando enviar registro ID ${registro.id} (CPF: ${cpf})`);
+
+            if (!fs.existsSync(registro.imagemPath)) {
+              console.warn(`⚠️ Imagem não encontrada para ID ${registro.id}: ${registro.imagemPath}`);
+              marcarComoErroDefinitivo(registro.id, 'Imagem não encontrada localmente');
+              continue;
+            }
+
+            const form = new FormData();
+            form.append('cpf', registro.cpf);
+            form.append('latitude', registro.latitude);
+            form.append('longitude', registro.longitude);
+            form.append('deviceIdentifier', registro.deviceIdentifier);
+            form.append('received', registro.created_at);
+
+            // 🔓 pega imagem (descripta se .enc)
+            const img = await getImagemParaEnvio(registro.imagemPath);
+            if (img.tipo === 'buffer') {
+              form.append('imagem', img.buffer, { filename: img.nome, contentType: img.contentType });
+            } else {
+              form.append('imagem', img.stream, { filename: img.nome, contentType: img.contentType });
+            }
+
+            const response = await axios.post(API_PREFEITURA, form, {
+              headers: form.getHeaders(),
+            });
+
+            if (response.status >= 200 && response.status < 300) {
+              db.run('UPDATE registros SET enviado = 1 WHERE id = ?', [registro.id]);
+              console.log(`✅ Registro ID ${registro.id} enviado com sucesso.`);
+              ultimoEnvioPorCpf.set(cpf, new Date());
+
+              if (APAGAR_IMAGEM_APOS_ENVIO) {
+                try {
+                  fs.unlinkSync(registro.imagemPath);
+                } catch {}
+              }
+            } else {
+              const mensagem = response.data?.message || response.statusText;
+              tratarErroEnvio(registro.id, tentativas, response.status, mensagem);
+            }
+          } catch (e) {
+            const status = e.response?.status;
+            const mensagem = e.response?.data?.message || e.response?.statusText || e.message;
+
+            if (e.response) {
+              console.error(`❌ Erro ao enviar ID ${registro.id}: ${mensagem} (status: ${status})`);
+              tratarErroEnvio(registro.id, tentativas, status, mensagem);
+            } else {
+              console.warn(`🌐 Backend indisponível ao enviar ID ${registro.id}: ${e.message}`);
+            }
+          } finally {
+            cpfsEmEnvio.delete(cpf);
           }
-
-        } catch (e) {
-          const status = e.response?.status;
-          const mensagem = e.response?.data?.message || e.response?.statusText || e.message;
-
-          if (e.response) {
-            console.error(`❌ Erro ao enviar ID ${registro.id}: ${mensagem} (status: ${status})`);
-            tratarErroEnvio(registro.id, tentativas, status, mensagem);
-          } else {
-            console.warn(`🌐 Backend indisponível ao enviar ID ${registro.id}: ${e.message}`);
-          }
-
-        } finally {
-          cpfsEmEnvio.delete(cpf);
         }
-      }
 
-      resolve(tentativasRealizadas);
-    });
+        resolve(tentativasRealizadas);
+      }
+    );
   });
 }
 
@@ -144,8 +180,14 @@ export async function enviarRegistrosPorIntervalo(dataInicio, dataFim, incluirEr
           form.append('latitude', r.latitude);
           form.append('longitude', r.longitude);
           form.append('deviceIdentifier', r.deviceIdentifier);
-          form.append('imagem', fs.createReadStream(r.imagemPath));
           form.append('received', r.created_at);
+
+          const img = await getImagemParaEnvio(r.imagemPath);
+          if (img.tipo === 'buffer') {
+            form.append('imagem', img.buffer, { filename: img.nome, contentType: img.contentType });
+          } else {
+            form.append('imagem', img.stream, { filename: img.nome, contentType: img.contentType });
+          }
 
           const response = await axios.post(API_PREFEITURA, form, {
             headers: form.getHeaders(),
@@ -154,11 +196,16 @@ export async function enviarRegistrosPorIntervalo(dataInicio, dataFim, incluirEr
           if (response.status >= 200 && response.status < 300) {
             db.run('UPDATE registros SET enviado = 1 WHERE id = ?', [r.id]);
             console.log(`✅ Registro ID ${r.id} enviado com sucesso.`);
+
+            if (APAGAR_IMAGEM_APOS_ENVIO) {
+              try {
+                fs.unlinkSync(r.imagemPath);
+              } catch {}
+            }
           } else {
             const msg = response.data?.message || response.statusText;
             tratarErroEnvio(r.id, r.tentativas ?? 0, response.status, msg);
           }
-
         } catch (err) {
           const status = err.response?.status;
           const msg = err.response?.data?.message || err.response?.statusText || err.message;
@@ -174,14 +221,15 @@ export async function enviarRegistrosPorIntervalo(dataInicio, dataFim, incluirEr
 
 function tratarErroEnvio(id, tentativas, status, mensagem) {
   const agora = new Date().toISOString();
-  const ERROS_PERMANENTES = [403, 404, 409]; 
+  const ERROS_PERMANENTES = [403, 404, 409];
   const erroDefinitivo = ERROS_PERMANENTES.includes(status) || tentativas + 1 >= 5 ? 1 : 0;
 
   if (erroDefinitivo) {
     console.warn(`🚫 Erro definitivo para ID ${id} (status: ${status}): ${mensagem}`);
   }
 
-  db.run(`
+  db.run(
+    `
     UPDATE registros 
     SET 
       tentativas = COALESCE(tentativas, 0) + 1,
@@ -189,19 +237,24 @@ function tratarErroEnvio(id, tentativas, status, mensagem) {
       erro_mensagem = ?,
       erro_definitivo = ?
     WHERE id = ?
-  `, [agora, mensagem, erroDefinitivo, id]);
+  `,
+    [agora, mensagem, erroDefinitivo, id]
+  );
 }
 
 function marcarComoErroDefinitivo(id, mensagem) {
   const agora = new Date().toISOString();
-  db.run(`
+  db.run(
+    `
     UPDATE registros 
     SET 
       erro_definitivo = 1,
       erro_mensagem = ?,
       ultima_tentativa = ?
     WHERE id = ?
-  `, [mensagem, agora, id]);
+  `,
+    [mensagem, agora, id]
+  );
 }
 
 // ✅ Executa sincronização automática a cada 10s se executado diretamente

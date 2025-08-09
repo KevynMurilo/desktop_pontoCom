@@ -6,6 +6,11 @@ import path from 'path';
 import sharp from 'sharp';
 import axios from 'axios';
 
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
+import { getOrCreateMaster } from './security/keys.js';
+import { encryptToFile } from './security/crypto-file.js';
+
 import { fileURLToPath } from 'url';
 
 import db from './db.js';
@@ -19,42 +24,34 @@ const SPRING_API_BASE_URL = 'https://backpontocerto.formosa.go.gov.br/api';
 
 const app = express();
 
-// ✅ Porta dinâmica via Electron ou fallback local
 const PORT = process.env.APP_PORT || process.argv[2] || 8080;
 
-// ✅ Caminho de uploads (em %APPDATA% ou local)
 const uploadDir = process.env.APP_UPLOADS_DIR || path.join(__dirname, 'uploads');
-
 if (!fs.existsSync(uploadDir)) {
-  try {
-    fs.mkdirSync(uploadDir, { recursive: true });
-    console.log(`📁 Pasta de uploads criada: ${uploadDir}`);
-  } catch (err) {
-    console.error(`❌ Erro ao criar diretório de uploads: ${uploadDir}`, err);
-    process.exit(1);
-  }
+  fs.mkdirSync(uploadDir, { recursive: true, mode: 0o700 });
+  console.log(`📁 Pasta de uploads criada: ${uploadDir}`);
 }
 
-// ✅ Configura multer para armazenar em memória
 const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
-app.use(cors());
+app.use(helmet());
+app.use(rateLimit({ windowMs: 60_000, max: 60 }));
+app.use(cors()); 
 app.use(express.json());
 
 app.get('/api/status', (_, res) => res.send('OK'));
 app.get('/api/health', (_, res) => res.send('OK'));
 
-// ✅ Registro de ponto
+// Registro de ponto (salva imagem criptografada .enc)
 app.post('/api/timerecord', upload.single('imagem'), async (req, res) => {
   try {
     const { cpf, deviceIdentifier } = req.body;
-
     if (!req.file || !cpf) {
       return res.status(400).json({ message: 'CPF e imagem são obrigatórios.' });
     }
 
-    // === 1. Busca funcionário ativo ===
+    // 1) Funcionário ativo
     const funcionario = await new Promise((resolve, reject) => {
       db.get(`SELECT * FROM funcionarios WHERE taxId = ? AND deletedAt IS NULL`, [cpf], (err, row) => {
         if (err) return reject(err);
@@ -65,78 +62,23 @@ app.post('/api/timerecord', upload.single('imagem'), async (req, res) => {
     if (!funcionario) {
       return res.status(404).json({ message: 'Funcionário não encontrado neste dispositivo.' });
     }
-
     if (funcionario.deletedAt || funcionario.ativo !== 1) {
-      return res.status(403).json({
-        message: 'Seu cadastro foi desativado. Por favor, procure o administrador do sistema.'
-      });
+      return res.status(403).json({ message: 'Seu cadastro foi desativado. Por favor, procure o administrador do sistema.' });
     }
 
-    // === 2. Verifica se hoje é dia de trabalho ===
-    const hoje = new Date();
-    const diaSemana = hoje.getDay(); // 0 = domingo ... 6 = sábado
-    const workDays = JSON.parse(funcionario.workDays || '[]');
-
-    // if (!workDays.includes(diaSemana)) {
-    //   return res.status(403).json({ message: 'Hoje não é um dia de trabalho do funcionário.' });
-    // }
-
-    // === 3. Verifica se há feriado ===
-    const hojeISO = hoje.toISOString().split('T')[0];
-
-    // const feriado = await new Promise((resolve, reject) => {
-    //   db.get(`
-    //     SELECT * FROM calendario_municipal
-    //     WHERE data = ? AND deletedAt IS NULL AND (
-    //       escopo = 'MUNICIPAL'
-    //       OR (escopo = 'DEPARTAMENTO' AND descricao = (
-    //           SELECT departamento FROM setores WHERE id = ?
-    //       ))
-    //       OR (escopo = 'SETOR' AND descricao = (
-    //           SELECT nome FROM setores WHERE id = ?
-    //       ))
-    //     )
-    //   `, [hojeISO, funcionario.setorId, funcionario.setorId], (err, row) => {
-    //     if (err) return reject(err);
-    //     resolve(row);
-    //   });
-    // });
-
-    // if (feriado) {
-    //   // === 4. Se há feriado, verifica se há período extra ===
-    //   const extra = await new Promise((resolve, reject) => {
-    //     db.get(`
-    //       SELECT * FROM periodos_extras
-    //       WHERE data_inicio <= ? AND data_fim >= ? AND deletedAt IS NULL AND (
-    //         escopo = 'MUNICIPAL'
-    //         OR (escopo = 'DEPARTAMENTO' AND descricao = (
-    //             SELECT departamento FROM setores WHERE id = ?
-    //         ))
-    //         OR (escopo = 'SETOR' AND descricao = (
-    //             SELECT nome FROM setores WHERE id = ?
-    //         ))
-    //       )
-    //     `, [hojeISO, hojeISO, funcionario.setorId, funcionario.setorId], (err, row) => {
-    //       if (err) return reject(err);
-    //       resolve(row);
-    //     });
-    //   });
-
-    //   if (!extra) {
-    //     return res.status(403).json({ message: 'Hoje é feriado e não há período extra para permitir o ponto.' });
-    //   }
-    // }
-
-    // === 5. Salva imagem e ponto ===
+    // 2) Localização (por IP)
     const { latitude, longitude } = await getLocationByIP();
 
-    const nomeArquivo = `${Date.now()}_${Math.random().toString(36).substring(2, 10)}.webp`;
+    // 3) Converte para WEBP em memória
+    const webpBuffer = await sharp(req.file.buffer).webp({ quality: 100 }).toBuffer();
+
+    // 4) Criptografa e grava .enc
+    const { key } = await getOrCreateMaster();
+    const nomeArquivo = `${Date.now()}_${Math.random().toString(36).substring(2, 10)}.enc`;
     const caminhoImagem = path.join(uploadDir, nomeArquivo);
+    await encryptToFile(key, webpBuffer, caminhoImagem);
 
-    await sharp(req.file.buffer)
-      .webp({ quality: 100 })
-      .toFile(caminhoImagem);
-
+    // 5) Salva registro no DB
     const agora = new Date();
     const offsetBrasiliaMs = -3 * 60 * 60 * 1000;
     const agoraBrasiliaISO = new Date(agora.getTime() + offsetBrasiliaMs).toISOString().split('.')[0];
@@ -147,7 +89,7 @@ app.post('/api/timerecord', upload.single('imagem'), async (req, res) => {
       [cpf, caminhoImagem, latitude, longitude, deviceIdentifier, agoraBrasiliaISO],
       function (err) {
         if (err) {
-          console.error('❌ Erro ao salvar no banco:', err.message);
+          console.error('❌ Erro ao salvar no banco:', err?.message || err);
           return res.status(500).json({ message: 'Erro ao salvar localmente' });
         }
         res.json({ message: 'Registro salvo localmente', id: this.lastID });
@@ -159,8 +101,8 @@ app.post('/api/timerecord', upload.single('imagem'), async (req, res) => {
   }
 });
 
-// ✅ Forçar sincronização manual
-app.post('/api/forcar-sincronizacao', async (req, res) => {
+// Forçar sincronização manual
+app.post('/api/forcar-sincronizacao', async (_req, res) => {
   try {
     await enviarRegistrosPendentes();
     res.send({ message: 'Sincronização manual concluída.' });
@@ -170,14 +112,12 @@ app.post('/api/forcar-sincronizacao', async (req, res) => {
   }
 });
 
-// ✅ Sincronização por intervalo
+// Sincronização por intervalo
 app.post('/api/forcar-sincronizacao-por-data', async (req, res) => {
   const { dataInicio, dataFim, incluirErros } = req.body;
-
   if (!dataInicio || !dataFim) {
-    return res.status(400).json({ message: 'dataInicio e dataFim são obrigatórios no corpo da requisição.' });
+    return res.status(400).json({ message: 'dataInicio e dataFim são obrigatórios.' });
   }
-
   try {
     const flag = incluirErros === true || incluirErros === 'true';
     console.log(`📅 Forçando sincronização entre ${dataInicio} e ${dataFim} ${flag ? '(incluindo erros definitivos)' : ''}`);
@@ -189,18 +129,15 @@ app.post('/api/forcar-sincronizacao-por-data', async (req, res) => {
   }
 });
 
-app.post('/api/forcar-sincronizacao-recebimento', async (req, res) => {
+// Sincronização de recebimento (com progresso)
+app.post('/api/forcar-sincronizacao-recebimento', async (_req, res) => {
   try {
     const municipioId = await obterMunicipioId();
     const resultado = await syncDadosRecebidosComProgresso(municipioId, progresso => {
       if (process.send) {
-        process.send({
-          tipo: 'progresso-sync-recebimento',
-          payload: progresso
-        });
+        process.send({ tipo: 'progresso-sync-recebimento', payload: progresso });
       }
     });
-
     res.send({ message: 'Sincronização de recebimento concluída.', ...resultado });
   } catch (err) {
     console.error('❌ Erro ao forçar sincronização de recebimento:', err);
@@ -208,11 +145,9 @@ app.post('/api/forcar-sincronizacao-recebimento', async (req, res) => {
   }
 });
 
-
-// ✅ Aviso de pendência antiga
-app.get('/api/registros-pendentes/aviso', (req, res) => {
+// Aviso de pendência antiga
+app.get('/api/registros-pendentes/aviso', (_req, res) => {
   const seisHorasAtras = new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString();
-
   db.get(
     `SELECT COUNT(*) as total FROM registros 
      WHERE enviado = 0 AND erro_definitivo = 0 AND created_at <= ?`,
@@ -222,22 +157,18 @@ app.get('/api/registros-pendentes/aviso', (req, res) => {
         console.error('❌ Erro ao buscar pendentes antigos:', err.message);
         return res.status(500).json({ message: 'Erro interno' });
       }
-      res.json({ total: row.total });
+      res.json({ total: row?.total ?? 0 });
     }
   );
 });
 
-// ✅ Verificação de dispositivo
+// Verificação de dispositivo
 app.get('/api/device/verificar/:identifier', async (req, res) => {
   const { identifier } = req.params;
-
   try {
     const response = await axios.get(`${SPRING_API_BASE_URL}/device/identifier/${identifier}/vinculo`);
     if (response.data?.success) {
-      res.json({
-        existe: true,
-        device: response.data.data,
-      });
+      res.json({ existe: true, device: response.data.data });
     } else {
       res.status(404).json({ existe: false, message: 'Dispositivo não encontrado no servidor remoto.' });
     }
@@ -245,12 +176,12 @@ app.get('/api/device/verificar/:identifier', async (req, res) => {
     if (err.response?.status === 404) {
       return res.status(404).json({ existe: false, message: 'Dispositivo não encontrado.' });
     }
-
     console.error('❌ Erro ao verificar dispositivo remoto:', err);
     res.status(500).json({ message: 'Erro ao conectar com o servidor remoto.' });
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`🚀 Servidor local ouvindo em http://localhost:${PORT}`);
+// Ouvir apenas em loopback (localhost)
+app.listen(PORT, '127.0.0.1', () => {
+  console.log(`🚀 Servidor local ouvindo em http://127.0.0.1:${PORT}`);
 });

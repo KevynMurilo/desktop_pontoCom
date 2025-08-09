@@ -22,6 +22,7 @@ backend/registros.db
 # --------------------------
 
 electron/node_modules/
+electron/dist/
 
 # --------------------------
 # GERAL
