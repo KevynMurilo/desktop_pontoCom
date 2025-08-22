@@ -40,11 +40,9 @@ export class RegistroPontoHandlers {
       }
     }, 60000);
 
-    // Controle para evitar repetição de progresso
     let ultimaContagem = { registrosSincronizados: 0, totalRegistros: 0 };
 
     this.service.onProgressoSyncRecebimento(({ registrosSincronizados, totalRegistros }) => {
-      // Ignora se progresso for idêntico ao anterior
       if (
         registrosSincronizados === ultimaContagem.registrosSincronizados &&
         totalRegistros === ultimaContagem.totalRegistros
@@ -66,7 +64,6 @@ export class RegistroPontoHandlers {
       this.vm.registrosSincronizados.set(registrosSincronizados);
 
       if (registrosSincronizados >= totalRegistros) {
-        // Aguarda breve tempo para suavidade visual
         setTimeout(() => {
           this.vm.carregandoSincronizacao.set(false);
           this.vm.totalRegistros.set(0);
@@ -151,7 +148,8 @@ export class RegistroPontoHandlers {
       deviceIdentifier: this.vm.deviceIdentifier
     }).subscribe({
       next: () => {
-        this.vm.mensagemSucesso.set('Ponto registrado com sucesso!');
+        const hora = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        this.vm.mensagemSucesso.set(`✅ Ponto registrado com sucesso às ${hora}!`);
         this.vm.mensagemErro.set(null);
         setTimeout(() => this.vm.mensagemSucesso.set(null), 3000);
         this.vm.form.reset();
@@ -162,7 +160,7 @@ export class RegistroPontoHandlers {
         }, 2000);
       },
       error: err => {
-        this.vm.mensagemErro.set(err?.error?.message || '❌ Erro ao registrar ponto.');
+        this.vm.mensagemErro.set(`❌ Falha ao registrar ponto. ${err?.error?.message || 'Tente novamente.'}`);
         this.vm.mensagemSucesso.set(null);
         setTimeout(() => this.vm.mensagemErro.set(null), 4000);
 
@@ -175,7 +173,7 @@ export class RegistroPontoHandlers {
 
   tratarEnter(event: KeyboardEvent, input: ElementRef<HTMLInputElement>) {
     event.preventDefault();
-    if (this.vm.tirandoFoto()) return; 
+    if (this.vm.tirandoFoto()) return;
 
     if (!this.vm.fotoCapturada()) {
       this.camera.tirarFoto();

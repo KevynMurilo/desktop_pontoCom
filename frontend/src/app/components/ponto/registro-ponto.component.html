@@ -1,10 +1,9 @@
 <!-- Container Principal -->
 <div class="min-h-screen w-full font-sans transition-colors duration-300 flex items-center justify-center p-4"
-  [class.bg-gray-100]="!modoEscuro()" [class.bg-gray-900]="modoEscuro()">
+  [class.bg-gray-100]="!modoEscuro()" [class.dark]="modoEscuro()" [class.bg-gray-900]="modoEscuro()">
 
   <!-- Animação de Flash para Captura de Foto -->
-  <div *ngIf="mostrarFlash()" class="fixed inset-0 bg-white z-[100] flash-animation pointer-events-none">
-  </div>
+  <div *ngIf="mostrarFlash()" class="fixed inset-0 bg-white z-[100] flash-animation pointer-events-none"></div>
   <style>
     .flash-animation {
       opacity: 1;
@@ -23,22 +22,23 @@
   </style>
 
   <!-- Notificações (Toasts) no Canto Superior -->
-  <div class="fixed top-5 right-5 z-[999] space-y-3 w-full max-w-xs">
+  <div class="fixed top-5 right-5 z-[999] space-y-3 w-full max-w-md">
     <div *ngIf="mensagemSucesso()"
-      class="bg-green-500 text-white text-sm font-semibold px-4 py-3 rounded-lg shadow-lg flex items-center gap-3">
-      <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-          d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+      class="bg-green-500 text-white text-sm font-semibold px-4 py-3 rounded-xl shadow-2xl flex items-start gap-3 transform transition-all duration-300 animate-toast-in">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24"
+        stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
       </svg>
-      <span>{{ mensagemSucesso() }}</span>
+      <span class="flex-1">{{ mensagemSucesso() }}</span>
     </div>
     <div *ngIf="mensagemErro()"
-      class="bg-red-500 text-white text-sm font-semibold px-4 py-3 rounded-lg shadow-lg flex items-center gap-3">
-      <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+      class="bg-red-600 text-white text-sm font-semibold px-4 py-3 rounded-xl shadow-2xl flex items-start gap-3 transform transition-all duration-300 animate-toast-in">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24"
+        stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round"
           d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
       </svg>
-      <span>{{ mensagemErro() }}</span>
+      <span class="flex-1">{{ mensagemErro() }}</span>
     </div>
   </div>
 
@@ -79,7 +79,7 @@
     [class.text-gray-200]="modoEscuro()">
 
     <!-- Header do Card -->
-    <div class="text-center">
+    <div class="text-center pb-4 border-b border-gray-200 dark:border-gray-700">
       <h1 class="text-2xl font-bold flex items-center justify-center gap-2" [class.text-gray-900]="!modoEscuro()"
         [class.text-white]="modoEscuro()">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor"
@@ -88,9 +88,12 @@
         </svg>
         Registro de Ponto
       </h1>
-      <p class="text-sm" [class.text-gray-500]="!modoEscuro()" [class.text-gray-400]="modoEscuro()">
-        Insira seu CPF e tire uma foto para registrar
-      </p>
+      <!-- Relógio em Tempo Real -->
+      <div class="mt-3" [class.text-gray-900]="!modoEscuro()" [class.text-white]="modoEscuro()">
+        <p class="text-4xl font-mono font-bold tracking-wider">{{ (relogio$ | async) | date:'HH:mm:ss' }}</p>
+        <p class="text-sm capitalize">{{ (relogio$ | async) | date:'EEEE, d \'de\' MMMM
+          \'de\' yyyy' }}</p>
+      </div>
     </div>
 
     <!-- Status Online/Offline e Sincronização -->
@@ -237,12 +240,11 @@
           Registrar Ponto
         </button>
       </div>
-
     </form>
   </div>
 </div>
 
-<!-- Modal de Configurações (A lógica permanece a mesma) -->
+<!-- Modal de Configurações -->
 <app-configuracoes *ngIf="mostrarConfiguracoes()" [deviceIdentifier]="deviceIdentifier"
   [dispositivosVideo]="dispositivosVideo" [dispositivoSelecionadoId]="dispositivoSelecionadoId"
   [modoEscuro]="modoEscuro()" (selecionarDispositivo)="onSelecionarDispositivo($event)"

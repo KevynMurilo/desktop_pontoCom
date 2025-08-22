@@ -11,11 +11,8 @@ const getPort = require('get-port').default;
 
 process.env.LANG = 'pt_BR.UTF-8';
 
-// 🔧 Deixe true/false para testar manualmente.
-// Se quiser automático, troque para:  const isDev = !app.isPackaged;
-const isDev = true;
+const isDev = !app.isPackaged;
 
-// Permite forçar via variável de ambiente (opcional)
 const forcedDev = process.env.FORCE_DEV === 'true' || process.env.FORCE_DEV === '1';
 const effectiveIsDev = forcedDev ? true : isDev;
 

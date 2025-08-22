@@ -13,6 +13,7 @@ import { RegistroPontoService } from '../../core/service/registro-ponto.service'
 import { RegistroPontoCamera } from './registro-ponto.camera';
 import { RegistroPontoViewModel } from './registro-ponto.viewmodel';
 import { RegistroPontoHandlers } from './registro-ponto.handlers';
+import { interval, map, startWith } from 'rxjs';
 
 @Component({
   selector: 'app-registro-ponto',
@@ -36,6 +37,10 @@ export class RegistroPontoComponent {
   camera = new RegistroPontoCamera(this.vm);
   handlers = new RegistroPontoHandlers(this.vm, this.service, this.camera);
 
+  relogio$ = interval(1000).pipe(
+    startWith(0),
+    map(() => new Date())
+  );
 
   get carregandoVinculo() { return this.vm.carregandoVinculo; }
 
@@ -59,7 +64,6 @@ export class RegistroPontoComponent {
     this.handlers.tratarEnter(event, this.cpfInputRef);
   }
 
-  // ✅ Reexpõe sinais e valores computados para o template
   get modoEscuro() { return this.vm.modoEscuro; }
   get mostrarFlash() { return this.vm.mostrarFlash; }
   get mensagemSucesso() { return this.vm.mensagemSucesso; }
@@ -101,7 +105,7 @@ export class RegistroPontoComponent {
   }
 
   focarCPF() {
-    this.vm.mensagemSucesso.set('Código copiado com sucesso!');
+    this.vm.mensagemSucesso.set('📋 Identificador do dispositivo copiado!');
     setTimeout(() => this.vm.mensagemSucesso.set(null), 2000);
     setTimeout(() => {
       const el = this.cpfInputRef?.nativeElement;
